@@ -1,7 +1,7 @@
 # Lab 3: Non-linear functions in hardware
 
 **25 minutes.** [Open in the browser](https://rht0111.github.io/edge-ai-arch-lab/lite/lab/index.html?path=lab3_nonlinear.ipynb){ .md-button }
-[Open in Colab](https://colab.research.google.com/github/rht0111/edge-ai-arch-lab/blob/master/labs/lab3_nonlinear.ipynb){ .md-button }
+[Open in Colab](https://colab.research.google.com/github/rht0111/edge-ai-arch-lab/blob/students/labs/lab3_nonlinear.ipynb){ .md-button }
 
 ## Goals
 

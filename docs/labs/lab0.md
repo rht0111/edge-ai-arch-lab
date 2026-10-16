@@ -1,7 +1,7 @@
 # Lab 0: Profile a Transformer block
 
 **15 minutes.** [Open in the browser](https://rht0111.github.io/edge-ai-arch-lab/lite/lab/index.html?path=lab0_profile.ipynb){ .md-button }
-[Open in Colab](https://colab.research.google.com/github/rht0111/edge-ai-arch-lab/blob/master/labs/lab0_profile.ipynb){ .md-button }
+[Open in Colab](https://colab.research.google.com/github/rht0111/edge-ai-arch-lab/blob/students/labs/lab0_profile.ipynb){ .md-button }
 
 ## Goals
 
