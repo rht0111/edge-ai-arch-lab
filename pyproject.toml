@@ -15,7 +15,8 @@ dependencies = ["numpy>=1.24", "matplotlib>=3.6", "ipywidgets>=8"]
 [project.optional-dependencies]
 lab = ["jupyterlab>=4"]
 dev = ["pytest>=7", "nbformat>=5", "nbconvert>=7", "ipykernel>=6"]
-docs = ["mkdocs-material>=9.5", "jupyterlite-core>=0.4", "jupyterlite-pyodide-kernel>=0.4", "jupyter-server", "build"]
+docs = ["mkdocs>=1.6,<2", "mkdocs-material>=9.5,<10", "jupyterlite-core~=0.8.0",
+        "jupyterlite-pyodide-kernel~=0.8.0", "jupyter-server", "build"]
 
 [project.urls]
 Homepage = "https://rht0111.github.io/edge-ai-arch-lab/"
