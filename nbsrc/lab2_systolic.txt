@@ -1,7 +1,7 @@
 #%% md
 # Lab 2: Systolic arrays
 
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/rht0111/edge-ai-arch-lab/blob/main/labs/lab2_systolic.ipynb)
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/rht0111/edge-ai-arch-lab/blob/master/labs/lab2_systolic.ipynb)
 &nbsp; Background: [course page for Lab 2](https://rht0111.github.io/edge-ai-arch-lab/labs/lab2/) &nbsp; Time: 30 min
 
 Peak TOPS assumes every MAC is busy every cycle. This lab measures how far

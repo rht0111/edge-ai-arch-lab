@@ -1,7 +1,7 @@
 #%% md
 # Lab 0: Profile a Transformer block
 
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/rht0111/edge-ai-arch-lab/blob/main/labs/lab0_profile.ipynb)
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/rht0111/edge-ai-arch-lab/blob/master/labs/lab0_profile.ipynb)
 &nbsp; Background: [course page for Lab 0](https://rht0111.github.io/edge-ai-arch-lab/labs/lab0/) &nbsp; Time: 15 min
 
 **Scenario.** You are the architect of a ~1 mW edge chip that must run ViT-Tiny

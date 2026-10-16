@@ -1,7 +1,7 @@
 #%% md
 # Lab 3: Non-linear functions in hardware
 
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/rht0111/edge-ai-arch-lab/blob/main/labs/lab3_nonlinear.ipynb)
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/rht0111/edge-ai-arch-lab/blob/master/labs/lab3_nonlinear.ipynb)
 &nbsp; Background: [course page for Lab 3](https://rht0111.github.io/edge-ai-arch-lab/labs/lab3/) &nbsp; Time: 25 min
 
 A MAC array cannot compute `exp` or `erf`. In Lab 0 softmax and GELU were

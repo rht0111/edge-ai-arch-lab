@@ -1,7 +1,7 @@
 #%% md
 # Lab 4: Design challenge
 
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/rht0111/edge-ai-arch-lab/blob/main/labs/lab4_design_challenge.ipynb)
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/rht0111/edge-ai-arch-lab/blob/master/labs/lab4_design_challenge.ipynb)
 &nbsp; Background: [course page for Lab 4](https://rht0111.github.io/edge-ai-arch-lab/labs/lab4/) &nbsp; Time: 25 min
 
 Time to commit to a chip. You choose:

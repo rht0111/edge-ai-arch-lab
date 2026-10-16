@@ -1,7 +1,7 @@
 #%% md
 # Lab 1: Roofline and tiling
 
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/rht0111/edge-ai-arch-lab/blob/main/labs/lab1_roofline_tiling.ipynb)
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/rht0111/edge-ai-arch-lab/blob/master/labs/lab1_roofline_tiling.ipynb)
 &nbsp; Background: [course page for Lab 1](https://rht0111.github.io/edge-ai-arch-lab/labs/lab1/) &nbsp; Time: 25 min
 
 Your edge chip has a 16x16 MAC array at 50 MHz (25.6 GOP/s peak) and a narrow
