@@ -39,6 +39,12 @@ class Mapping:
     hops: int = 0
     cycles: int = 0
     energy_pj: float = 0.0
+    pipelined: bool = False
+
+    @property
+    def graphs_per_cycle(self) -> float:
+        """Steady-state throughput when the same graph is applied to a stream of inputs."""
+        return 1.0 if self.pipelined else 1.0 / self.cycles
 
     @property
     def n_ops(self) -> int:
@@ -58,15 +64,26 @@ def _dist(p, q) -> int:
     return abs(p[0] - q[0]) + abs(p[1] - q[1])
 
 
-def map_dfg(dfg: list[Node], size: int = 4, bits: int = 16) -> Mapping:
-    """Place and schedule ``dfg``. Graph inputs enter on the west edge of every row."""
+def map_dfg(dfg: list[Node], size: int = 4, bits: int = 16, pipelined: bool = False) -> Mapping:
+    """Place and schedule ``dfg``. Graph inputs enter on the west edge of every row.
+
+    By default the mapper minimises the latency of one graph and may stack
+    dependent operations on the same PE. With ``pipelined=True`` every PE runs
+    a single operation (a spatial pipeline), so a new graph can start every
+    cycle at the price of more hops; the graph must fit on size x size PEs.
+    """
+    if pipelined and len(dfg) > size * size:
+        raise ValueError(f"{len(dfg)} operations do not fit on {size * size} PEs")
     names = {n.name for n in dfg}
     pes = [(r, c) for r in range(size) for c in range(size)]
     busy: set[tuple] = set()          # (pe, cycle)
-    mp = Mapping(size)
+    used: set[tuple] = set()
+    mp = Mapping(size, pipelined=pipelined)
     for node in dfg:
         best = None
         for pe in pes:
+            if pipelined and pe in used:
+                continue
             ready, hops = 0, 0
             for src in node.inputs:
                 if src in names:
@@ -84,6 +101,7 @@ def map_dfg(dfg: list[Node], size: int = 4, bits: int = 16) -> Mapping:
                 best = key
         t, hops, pe = best
         busy.add((pe, t))
+        used.add(pe)
         mp.place[node.name], mp.start[node.name] = pe, t
         mp.hops += hops
     mp.cycles = max(mp.start.values()) + 1
