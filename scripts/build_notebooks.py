@@ -12,7 +12,7 @@ Inside code, a solution is written as
 
 Without a STUB part, students see ``raise NotImplementedError("TODO")``.
 
-    python scripts/build_notebooks.py --stubs       # writes labs/ for main
+    python scripts/build_notebooks.py --stubs       # writes labs/ for master
     python scripts/build_notebooks.py --solutions   # writes labs/ for this branch
 """
 
