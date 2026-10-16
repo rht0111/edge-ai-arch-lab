@@ -163,20 +163,26 @@ fig.tight_layout()
 ## Stretch
 
 1. **On a CGRA.** `archsim.cgra` maps a small dataflow graph onto a 4x4
-   reconfigurable array. Map three copies of the shift-based exp and compare
-   the energy per element with a fixed-function unit for the same graph. What
-   does the flexibility cost? (Reconfigurable arrays that target such kernels
-   are an active research topic; see the course page.)
+   reconfigurable array. The cell below maps three copies of the shift-based
+   exp twice: minimising latency (operations may share a PE) and as a spatial
+   pipeline (one operation per PE, a new input every cycle). Compare energy per
+   element and throughput with a fixed-function unit. What does the flexibility
+   cost, and what does it buy? (Reconfigurable arrays for such kernels are an
+   active research topic; see the course page.)
 2. Quantise the LUT entries of `lut16` to 8 bits. Does the softmax error change?
 3. Improve `exp_shift` with a better 2^f, e.g. 1 + f - 0.343·f·(1 - f).
    How much does the error drop, and what does it cost?
 #%% code
 dfg = cgra.replicate(cgra.dfg_exp_shift(), 3)
-mp = cgra.map_dfg(dfg)
 ff = cgra.fixed_function(cgra.dfg_exp_shift())
-cgra.draw(mp, dfg)
-print(f"CGRA: {mp.energy_pj / 3:.2f} pJ/element, {mp.cycles} cycles for 3 elements")
-print(f"fixed function: {ff['energy_pj']:.2f} pJ/element, 1 element/cycle, {ff['area_um2']:.0f} um^2")
+fig, axes = plt.subplots(1, 2, figsize=(9, 4.5))
+for ax, pipelined in zip(axes, (False, True)):
+    mp = cgra.map_dfg(dfg, pipelined=pipelined)
+    cgra.draw(mp, dfg, ax)
+    print(f"CGRA, {'pipelined' if pipelined else 'latency-first'}: {mp.energy_pj / 3:.2f} pJ/element, "
+          f"{3 * mp.graphs_per_cycle:.1f} elements/cycle, utilization {mp.utilization:.2f}")
+print(f"fixed function: {ff['energy_pj']:.2f} pJ/element, 1 element/cycle, {ff['area_um2']:.0f} um^2 "
+      f"(the whole CGRA: {16 * cgra.PE_AREA_UM2:.0f} um^2)")
 #%% md
 ## Reflection
 
