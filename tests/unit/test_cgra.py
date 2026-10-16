@@ -1,3 +1,5 @@
+import pytest
+
 from archsim import cgra
 
 
@@ -34,3 +36,17 @@ def test_cgra_costs_more_energy_than_fixed_function():
     assert mp.energy_pj > ff["energy_pj"]
     assert ff["latency"] <= mp.cycles
     assert 0 < mp.utilization <= 1
+
+
+def test_pipelined_mapping_uses_distinct_pes():
+    dfg = cgra.replicate(cgra.dfg_exp_shift(), 3)
+    mp = cgra.map_dfg(dfg, pipelined=True)
+    assert len(set(mp.place.values())) == len(dfg)
+    _respects_dependencies(dfg, mp)
+    assert mp.graphs_per_cycle == 1.0
+    assert mp.hops >= cgra.map_dfg(dfg).hops
+
+
+def test_pipelined_mapping_must_fit():
+    with pytest.raises(ValueError):
+        cgra.map_dfg(cgra.replicate(cgra.dfg_exp_shift(), 4), pipelined=True)
