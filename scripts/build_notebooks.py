@@ -12,8 +12,10 @@ Inside code, a solution is written as
 
 Without a STUB part, students see ``raise NotImplementedError("TODO")``.
 
-    python scripts/build_notebooks.py --stubs       # writes labs/ for master
-    python scripts/build_notebooks.py --solutions   # writes labs/ for this branch
+    python scripts/build_notebooks.py --solutions   # labs/ on master and solutions
+    python scripts/build_notebooks.py --stubs --out DIR   # notebooks for students
+
+Stub notebooks link their Colab badge to the students branch.
 """
 
 from __future__ import annotations
@@ -64,6 +66,8 @@ def build(src: Path, solutions: bool) -> nbformat.NotebookNode:
             return
         text = "\n".join(buf).strip("\n")
         if kind == "md":
+            if not solutions:
+                text = text.replace("/blob/master/labs/", "/blob/students/labs/")
             nb.cells.append(nbformat.v4.new_markdown_cell(text))
         else:
             cell = nbformat.v4.new_code_cell(_resolve(text, solutions))

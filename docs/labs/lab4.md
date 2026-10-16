@@ -1,7 +1,7 @@
 # Lab 4: Design challenge
 
 **25 minutes.** [Open in the browser](https://rht0111.github.io/edge-ai-arch-lab/lite/lab/index.html?path=lab4_design_challenge.ipynb){ .md-button }
-[Open in Colab](https://colab.research.google.com/github/rht0111/edge-ai-arch-lab/blob/master/labs/lab4_design_challenge.ipynb){ .md-button }
+[Open in Colab](https://colab.research.google.com/github/rht0111/edge-ai-arch-lab/blob/students/labs/lab4_design_challenge.ipynb){ .md-button }
 
 ## The challenge
 

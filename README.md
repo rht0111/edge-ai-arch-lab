@@ -48,7 +48,9 @@ jupyter lab labs/
 ```
 
 Check your answers from a terminal with `pytest tests/test_lab1.py`
-(after `pip install -e ".[dev]"`). See the
+(after `pip install -e ".[dev]"`). A lab's checks report "not implemented
+yet" and fail until you have completed its `# TODO` cells; that is expected.
+`pytest tests/unit` tests the `archsim` package itself and always passes. See the
 [setup page](https://rht0111.github.io/edge-ai-arch-lab/setup/) for
 troubleshooting on university PCs.
 

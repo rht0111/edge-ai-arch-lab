@@ -18,24 +18,33 @@ jobs:
       - run: pip install -e ".[dev]"
       - run: pytest tests/unit -q
 
-  # The notebooks on master are stubs, so the lab checks and a full run of the
-  # notebooks only make sense on the branch that holds the reference solutions.
-  solutions:
-    if: github.ref_name == 'solutions'
+  # Lab checks and full notebook runs need the solved notebooks, which exist
+  # only where nbsrc/ is present (master, solutions). The students version
+  # has stubs, so there this job only reports that it skipped them.
+  notebooks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -e ".[dev]"
-      - name: Expected values are up to date
+      - id: kind
+        run: echo "full=$([ -d nbsrc ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      - if: steps.kind.outputs.full != 'true'
+        run: echo "Student version, lab checks skipped."
+      - if: steps.kind.outputs.full == 'true'
+        run: pip install -e ".[dev]"
+      - name: Notebooks and expected values match the sources
+        if: steps.kind.outputs.full == 'true'
         run: |
+          python scripts/build_notebooks.py --solutions
           python scripts/make_expected.py
-          git diff --exit-code archsim/data/expected.json
+          git diff --exit-code labs archsim/data/expected.json
       - name: Lab checks
+        if: steps.kind.outputs.full == 'true'
         run: pytest tests -q
       - name: Execute every notebook top to bottom
+        if: steps.kind.outputs.full == 'true'
         working-directory: labs
         run: |
           for nb in *.ipynb; do
