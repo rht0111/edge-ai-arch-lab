@@ -52,7 +52,8 @@ class Mapping:
 
     @property
     def utilization(self) -> float:
-        return self.n_ops / (self.cycles * self.size ** 2)
+        """Fraction of PE-cycles doing useful work in steady state."""
+        return self.n_ops * self.graphs_per_cycle / self.size ** 2
 
     @property
     def res_mii(self) -> int:
