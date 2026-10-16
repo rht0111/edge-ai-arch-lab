@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+uv.lock
+
+# Jupyter
+.ipynb_checkpoints/
+.jupyterlite.doit.db
+submission.json
+submissions/
+
+# Site builds
+site/
+_output/
+lite/pypi/
+
+# Editor and assistant tool files (never committed)
+.vscode/
+.idea/
+.DS_Store
+[Cc][Ll][Aa][Uu][Dd][Ee].md
+[Cc][Ll][Aa][Uu][Dd][Ee].local.md
+.[Cc]laude/
+AGENTS.md
+.cursor/
+.cursorrules
+*.prompt
+*.prompt.md
+prompts/
+notes/
+session-notes*

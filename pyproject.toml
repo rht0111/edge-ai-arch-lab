@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "archsim"
+version = "0.1.0"
+description = "Hands-on models of an edge Transformer accelerator: roofline, tiling, systolic arrays, non-linear units, design space."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Rohit Prasad" }]
+dependencies = ["numpy>=1.24", "matplotlib>=3.6", "ipywidgets>=8"]
+
+[project.optional-dependencies]
+lab = ["jupyterlab>=4"]
+dev = ["pytest>=7", "nbformat>=5", "nbconvert>=7", "ipykernel>=6"]
+docs = ["mkdocs-material>=9.5", "jupyterlite-core>=0.4", "jupyterlite-pyodide-kernel>=0.4", "jupyter-server", "build"]
+
+[project.urls]
+Homepage = "https://rht0111.github.io/edge-ai-arch-lab/"
+Source = "https://github.com/rht0111/edge-ai-arch-lab"
+
+[tool.setuptools]
+packages = ["archsim"]
+
+[tool.setuptools.package-data]
+archsim = ["data/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
