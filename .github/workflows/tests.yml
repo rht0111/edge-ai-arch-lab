@@ -18,7 +18,7 @@ jobs:
       - run: pip install -e ".[dev]"
       - run: pytest tests/unit -q
 
-  # The notebooks on main are stubs, so the lab checks and a full run of the
+  # The notebooks on master are stubs, so the lab checks and a full run of the
   # notebooks only make sense on the branch that holds the reference solutions.
   solutions:
     if: github.ref_name == 'solutions'

@@ -1,7 +1,7 @@
 # Lab 2: Systolic arrays
 
 **30 minutes.** [Open in the browser](https://rht0111.github.io/edge-ai-arch-lab/lite/lab/index.html?path=lab2_systolic.ipynb){ .md-button }
-[Open in Colab](https://colab.research.google.com/github/rht0111/edge-ai-arch-lab/blob/main/labs/lab2_systolic.ipynb){ .md-button }
+[Open in Colab](https://colab.research.google.com/github/rht0111/edge-ai-arch-lab/blob/master/labs/lab2_systolic.ipynb){ .md-button }
 
 ## Goals
 
