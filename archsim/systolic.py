@@ -105,6 +105,7 @@ def simulate_ws_tile(A, W, rows: int = 4, cols: int = 4, trace: bool = False) ->
         active = vx & (np.arange(cols) < n)[None, :]
         above = np.vstack([np.zeros((1, cols)), psum[:-1]])     # psums move down
         psum = above + np.where(active, x * w, 0.0)
+        psum[k:] = 0.0                     # results leave at row k-1; unused rows are bypassed
         if active.any():
             macs += int(active.sum())
             last = t
