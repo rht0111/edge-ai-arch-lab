@@ -1,0 +1,186 @@
+#%% md
+# Lab 3: Non-linear functions in hardware
+
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/rht0111/edge-ai-arch-lab/blob/main/labs/lab3_nonlinear.ipynb)
+&nbsp; Background: [course page for Lab 3](https://rht0111.github.io/edge-ai-arch-lab/labs/lab3/) &nbsp; Time: 25 min
+
+A MAC array cannot compute `exp` or `erf`. In Lab 0 softmax and GELU were
+under 2% of the FLOPs but a large share of the compute energy when run in
+FP32 software. Here you build cheaper versions and measure what they cost in
+accuracy.
+
+**Goals**
+
+1. Implement softmax and GELU three ways: float reference, lookup table (LUT),
+   and a shift-based approximation.
+2. Plot error against cost per element.
+3. Plug your softmax into attention and check the output.
+#%% code
+# Setup: installs archsim in JupyterLite or Colab; does nothing on a local install.
+import sys
+if "pyodide" in sys.modules:
+    import piplite
+    await piplite.install(["archsim", "ipywidgets"])
+elif "google.colab" in sys.modules:
+    %pip install -q "archsim @ git+https://github.com/rht0111/edge-ai-arch-lab"
+#%% task
+import math
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+from archsim import cgra, energy
+from archsim import nonlinear as nl
+from archsim.checks import check
+#%% md
+## 1. A lookup table
+
+After subtracting the row maximum, every softmax input is <= 0, and
+exp(-8) ≈ 3e-4 is already negligible. So a table covering [-8, 0] suffices.
+
+**Task 1.** `make_lut(f, lo, hi, n)` returns a function `g(x)` that splits
+[lo, hi) into `n` equal bins, stores `f` evaluated at the **centre** of each
+bin, and returns for each x the entry of its bin. Inputs outside the range
+use the first or the last entry (clamp the index).
+In hardware: one subtract, one multiply (by n / (hi - lo)), one truncation, one table read.
+#%% task
+def make_lut(f, lo, hi, n):
+    step = (hi - lo) / n
+    # TODO: build the table once, return a function that indexes it
+    ### BEGIN SOLUTION
+    table = f(lo + step * (np.arange(n) + 0.5))
+
+    def g(x):
+        idx = np.floor((np.asarray(x, float) - lo) / step).astype(int)
+        return table[np.clip(idx, 0, n - 1)]
+    return g
+    ### END SOLUTION
+#%% code
+check("lab3.lut_exp", make_lut)
+check("lab3.lut_gelu", make_lut)
+#%% md
+## 2. Exp with a shift
+
+exp(x) = 2^(x·log2 e). Write y = x·log2 e = z + f with z = floor(y) an integer
+and f in [0, 1). Then 2^z is a shift and, to first order, 2^f ≈ 1 + f.
+The error is at most about 6%, with no table and no multiplier beyond the first.
+
+**Task 2.** Implement `exp_shift(x)` with exactly this approximation
+(use `2.0 ** z` for the shift).
+#%% task
+LOG2E = math.log2(math.e)
+
+
+def exp_shift(x):
+    # TODO
+    ### BEGIN SOLUTION
+    y = np.asarray(x, float) * LOG2E
+    z = np.floor(y)
+    return (1.0 + (y - z)) * 2.0 ** z
+    ### END SOLUTION
+#%% code
+check("lab3.exp_shift", exp_shift)
+#%% md
+**Task 3.** A softmax that takes the exponential as an argument. Work along
+the last axis: subtract the row max, apply `exp_fn`, divide by the row sum.
+#%% task
+def softmax_approx(x, exp_fn):
+    # TODO
+    ### BEGIN SOLUTION
+    x = np.asarray(x, float)
+    e = exp_fn(x - x.max(axis=-1, keepdims=True))
+    return e / e.sum(axis=-1, keepdims=True)
+    ### END SOLUTION
+#%% code
+check("lab3.softmax", softmax_approx)
+#%% md
+## 3. Error against cost
+
+The cost per element below uses the 45 nm table of `archsim.energy`.
+Floating point pays FP32 software prices; the others run on 16-bit integer
+hardware. I-BERT (Kim et al., ICML 2021) uses a second-order polynomial after
+a range reduction, between the LUT and the shift in cost.
+#%% code
+lut16, lut64 = make_lut(np.exp, -8, 0, 16), make_lut(np.exp, -8, 0, 64)
+index_ops = {"add": 1, "mul": 1, "floor": 1}     # bin index; the table read is added below
+methods = {
+    # name: (exp function, pJ per element)
+    "float": (np.exp, energy.primitive_energy({"exp": 1}, 32)),
+    "LUT-16": (lut16, energy.primitive_energy(index_ops, 16) + energy.sram_energy(2, 16 * 2)),
+    "LUT-64": (lut64, energy.primitive_energy(index_ops, 16) + energy.sram_energy(2, 64 * 2)),
+    "shift": (exp_shift, energy.primitive_energy({"mul": 1, "floor": 1, "add": 2, "shift": 1}, 16)),
+    "I-BERT": (nl.exp_ibert, energy.primitive_energy({"mul": 3, "floor": 1, "add": 3, "shift": 1}, 16)),
+}
+scores = np.random.default_rng(0).normal(scale=3.0, size=(197, 197))   # one head
+ref = nl.softmax(scores)
+fig, ax = plt.subplots(figsize=(6, 3.5))
+for name, (fn, pj) in methods.items():
+    err = np.abs(softmax_approx(scores, fn) - ref).max()
+    print(f"{name:<8} {pj:6.2f} pJ/elem   max |error| {err:.1e}")
+    if name != "float":   # the reference has zero error by definition
+        ax.loglog(pj, err, "o")
+        ax.annotate(name, (pj, err), xytext=(6, -3), textcoords="offset points")
+ax.set_xlim(0.5, 5)
+ax.set_xlabel("exp cost (pJ / element)"); ax.set_ylabel("max |softmax error|")
+ax.set_title(f"float reference: {methods['float'][1]:.1f} pJ / element");
+#%% md
+## 4. Inside attention
+
+Error in the probabilities matters only through the attention output. Use
+your `softmax_approx` inside a full attention head of ViT-Tiny size.
+#%% code
+rng = np.random.default_rng(1)
+Q, K, V = rng.normal(size=(3, 197, 64))
+out_ref = nl.attention(Q, K, V)
+for name, (fn, _) in methods.items():
+    out = nl.attention(Q, K, V, lambda s, fn=fn: softmax_approx(s, fn))
+    rel = np.abs(out - out_ref).max() / np.abs(out_ref).max()
+    same = np.mean(np.argmax(softmax_approx(Q @ K.T / 8, fn), -1) == np.argmax(Q @ K.T, -1))
+    print(f"{name:<8} max rel. error of the output {rel:.1e}   same top-1 key: {100 * same:.0f}%")
+#%% md
+## 5. GELU three ways
+
+GELU is not bounded like exp, so the LUT covers [-4, 4) and outside that
+range we use the asymptotes (0 on the left, x on the right).
+#%% code
+lut = make_lut(nl.gelu, -4, 4, 32)
+
+def gelu_lut(x):
+    x = np.asarray(x, float)
+    return np.where(x < -4, 0.0, np.where(x >= 4, x, lut(x)))
+
+x = np.linspace(-6, 6, 1201)
+exact = nl.gelu(x)
+fig, axes = plt.subplots(1, 2, figsize=(10, 3))
+axes[0].plot(x, exact, "k", label="exact (erf)")
+for name, fn in {"LUT-32": gelu_lut, "I-BERT": nl.gelu_ibert, "x·sigmoid(1.702x)": nl.gelu_sigmoid}.items():
+    y = fn(x)
+    axes[0].plot(x, y, "--", label=name)
+    axes[1].plot(x, y - exact, label=f"{name}: max {np.abs(y - exact).max():.3f}")
+axes[0].legend(); axes[1].legend(); axes[1].set_title("error")
+fig.tight_layout()
+#%% md
+## Stretch
+
+1. **On a CGRA.** `archsim.cgra` maps a small dataflow graph onto a 4x4
+   reconfigurable array. Map three copies of the shift-based exp and compare
+   the energy per element with a fixed-function unit for the same graph. What
+   does the flexibility cost? (Reconfigurable arrays that target such kernels
+   are an active research topic; see the course page.)
+2. Quantise the LUT entries of `lut16` to 8 bits. Does the softmax error change?
+3. Improve `exp_shift` with a better 2^f, e.g. 1 + f - 0.343·f·(1 - f).
+   How much does the error drop, and what does it cost?
+#%% code
+dfg = cgra.replicate(cgra.dfg_exp_shift(), 3)
+mp = cgra.map_dfg(dfg)
+ff = cgra.fixed_function(cgra.dfg_exp_shift())
+cgra.draw(mp, dfg)
+print(f"CGRA: {mp.energy_pj / 3:.2f} pJ/element, {mp.cycles} cycles for 3 elements")
+print(f"fixed function: {ff['energy_pj']:.2f} pJ/element, 1 element/cycle, {ff['area_um2']:.0f} um^2")
+#%% md
+## Reflection
+
+"Non-linear functions are a hardware design problem." Using your plot of
+error against cost, pick one exp implementation for the 1 mW chip and justify
+it in two sentences: what accuracy did you require, and where did that
+requirement come from?

@@ -1,0 +1,175 @@
+#%% md
+# Lab 0: Profile a Transformer block
+
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/rht0111/edge-ai-arch-lab/blob/main/labs/lab0_profile.ipynb)
+&nbsp; Background: [course page for Lab 0](https://rht0111.github.io/edge-ai-arch-lab/labs/lab0/) &nbsp; Time: 15 min
+
+**Scenario.** You are the architect of a ~1 mW edge chip that must run ViT-Tiny
+(12 encoder blocks, embedding size 192, 3 heads, 197 tokens for a 224x224 image).
+Before drawing any hardware, find out where the work is.
+
+**Goals**
+
+1. Count the operations and the bytes of every operator in one encoder block.
+2. See how the picture changes when the sequence grows from 64 to 1024 tokens.
+3. See why "small in FLOPs" does not mean "cheap".
+#%% code
+# Setup: installs archsim in JupyterLite or Colab; does nothing on a local install.
+import sys
+if "pyodide" in sys.modules:
+    import piplite
+    await piplite.install(["archsim", "ipywidgets"])
+elif "google.colab" in sys.modules:
+    %pip install -q "archsim @ git+https://github.com/rht0111/edge-ai-arch-lab"
+#%% task
+import numpy as np
+import matplotlib.pyplot as plt
+
+from archsim import energy, workloads
+from archsim.checks import check
+#%% md
+## 1. One GEMM
+
+Almost every layer of a Transformer is a matrix multiplication: an (M x K)
+matrix times a (K x N) matrix. It performs M·K·N multiply-accumulates (MACs);
+we count **one MAC as 2 operations**.
+
+At minimum, the hardware must read both inputs once and write the output once.
+With `bits`-bit elements that is (M·K + K·N + M·N)·bits/8 bytes. Real
+hardware moves more than this; Lab 1 is about how much more.
+
+**Task 1.** Complete `gemm_flops_bytes`. It returns a tuple `(flops, bytes)`.
+#%% task
+def gemm_flops_bytes(M, K, N, bits=8):
+    """Operations and minimum bytes moved by an (M x K) @ (K x N) GEMM."""
+    # TODO: flops = 2 * MACs; bytes = every element of A, B and C once
+    ### BEGIN SOLUTION
+    flops = 2 * M * K * N
+    nbytes = (M * K + K * N + M * N) * bits / 8
+    return flops, nbytes
+    ### END SOLUTION
+#%% code
+check("lab0.gemm", gemm_flops_bytes)
+#%% md
+The ratio flops / bytes is the **arithmetic intensity**. Compare the QKV
+projection of ViT-Tiny with a matrix-vector product of the same weights:
+#%% code
+for name, (M, K, N) in {"QKV projection (197 tokens)": (197, 192, 576),
+                        "same weights, 1 token": (1, 192, 576)}.items():
+    f, b = gemm_flops_bytes(M, K, N)
+    print(f"{name:<30} {f / 1e6:8.2f} MFLOP  {b / 1e3:7.1f} kB  {f / b:6.1f} FLOP/B")
+#%% md
+## 2. Attention
+
+Each head computes the scores S = Q·Kᵀ, an (seq x d_h) by (d_h x seq) GEMM,
+then the context P·V, an (seq x seq) by (seq x d_h) GEMM, with
+d_h = dim / heads. These two GEMMs have no weights: both operands are
+activations computed on the fly.
+
+**Task 2.** Return the operations of the two attention GEMMs, summed over all heads.
+#%% task
+def attention_flops(seq, dim, heads):
+    """FLOPs of Q K^T and P V for all heads (softmax not included)."""
+    # TODO: use gemm_flops_bytes for one head, then multiply
+    ### BEGIN SOLUTION
+    dh = dim // heads
+    qk, _ = gemm_flops_bytes(seq, dh, seq)
+    pv, _ = gemm_flops_bytes(seq, seq, dh)
+    return heads * (qk + pv)
+    ### END SOLUTION
+#%% code
+check("lab0.attention", attention_flops)
+#%% md
+## 3. The whole block
+
+`archsim.workloads.vit_block` describes one pre-norm encoder block as a list
+of operators. Each knows its shape, its FLOPs and its minimum bytes.
+#%% code
+block = workloads.vit_block(seq=197)
+workloads.print_summary(block)
+#%% code
+def plot_breakdown(seq, ax_f, ax_b):
+    rows = workloads.summary(workloads.vit_block(seq=seq))
+    names = [r["name"] for r in rows]
+    colors = ["tab:blue" if r["kind"] == "gemm" else "tab:red" for r in rows]
+    ax_f.barh(names, [r["flops_pct"] for r in rows], color=colors)
+    ax_b.barh(names, [r["bytes_pct"] for r in rows], color=colors)
+    ax_f.set_title(f"seq={seq}: % of FLOPs"); ax_b.set_title(f"seq={seq}: % of min. bytes")
+    ax_f.invert_yaxis(); ax_b.invert_yaxis()
+
+fig, axes = plt.subplots(2, 2, figsize=(10, 6), sharey=True)
+plot_breakdown(64, *axes[0])
+plot_breakdown(1024, *axes[1])
+fig.suptitle("blue: GEMM, red: element-wise / non-linear")
+fig.tight_layout()
+#%% md
+Questions to discuss with your neighbour (one sentence each):
+
+* At 64 tokens, which operators dominate the FLOPs? At 1024?
+* For which sequence length do attention GEMMs and MLP GEMMs have equal FLOPs?
+  (Hint: compare 2·seq²·dim with 8·seq·dim².)
+* Softmax is under 1% of the FLOPs at 197 tokens. What share of the minimum bytes is it at 1024?
+
+## 4. FLOPs are not cost
+
+One operation is not one unit of energy. Here are illustrative 45 nm figures
+(Horowitz, ISSCC 2014; see the [references](https://rht0111.github.io/edge-ai-arch-lab/references/)):
+#%% code
+for name, pj in energy.energy_table(bits=8):
+    print(f"{name:<22}{pj:9.2f} pJ")
+#%% md
+On a chip without special hardware, softmax, GELU and LayerNorm run in FP32
+on a small core, and `exp`, `tanh`, division and square root each cost tens of
+FP32 operations. GEMMs run in int8 on the MAC array.
+
+**Task 3.** For each operator *kind* (`gemm`, `softmax`, `gelu`, `layernorm`,
+`add`), return `(flops, compute_energy_pj)` summed over the block, where
+
+* a GEMM costs `op.macs * energy.mac_energy(8)`,
+* anything else costs `energy.primitive_energy(op.primitive_ops(), 32)`.
+
+Data movement is ignored here; it comes back in Lab 1.
+#%% task
+def cost_breakdown(ops):
+    """{kind: (flops, compute energy in pJ)} for a list of workloads.Op."""
+    out = {}
+    for op in ops:
+        # TODO: compute the energy of op, then accumulate (flops, energy) per op.kind
+        ### BEGIN SOLUTION
+        if op.is_gemm:
+            pj = op.macs * energy.mac_energy(8)
+        else:
+            pj = energy.primitive_energy(op.primitive_ops(), 32)
+        f, e = out.get(op.kind, (0, 0.0))
+        out[op.kind] = (f + op.flops, e + pj)
+        ### END SOLUTION
+    return out
+#%% code
+check("lab0.breakdown", cost_breakdown)
+#%% code
+fig, axes = plt.subplots(1, 2, figsize=(10, 3.2))
+for ax, seq in zip(axes, (197, 1024)):
+    cb = cost_breakdown(workloads.vit_block(seq=seq))
+    kinds = list(cb)
+    f = np.array([cb[k][0] for k in kinds], float)
+    e = np.array([cb[k][1] for k in kinds], float)
+    x = np.arange(len(kinds))
+    ax.bar(x - 0.2, 100 * f / f.sum(), 0.4, label="% of FLOPs")
+    ax.bar(x + 0.2, 100 * e / e.sum(), 0.4, label="% of compute energy")
+    ax.set_xticks(x, kinds); ax.set_title(f"seq={seq}"); ax.legend()
+fig.tight_layout()
+#%% md
+## Stretch
+
+1. ViT-Tiny has 12 blocks. How many MB of int8 GEMM weights is that
+   (`workloads.weight_count`)? Compare with a 256 KiB on-chip SRAM.
+2. Move the non-linear operators to int16 hardware: replace the FP32 cost with
+   `energy.primitive_energy(op.primitive_ops(), 16)` but count `exp`, `tanh`,
+   `div` and `rsqrt` as 5 int16 multiplies each. How does the energy share change?
+
+## Reflection
+
+The lecture claimed that GEMM dominates compute, that attention scales with
+sequence length, and that non-linear functions are small in FLOPs but not in
+cost. Which of your numbers support each claim? Write the three numbers down:
+you will reuse them in Lab 4.

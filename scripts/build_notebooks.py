@@ -1,0 +1,103 @@
+"""Build the lab notebooks from nbsrc/*.txt, with or without solutions.
+
+Source format: cells start with a line ``#%% md``, ``#%% code`` or ``#%% task``
+(a code cell tagged "task": the cells that tests/nbtasks.py executes).
+Inside code, a solution is written as
+
+    ### BEGIN SOLUTION
+    ...reference code...
+    ### STUB            (optional; what students see instead)
+    ...
+    ### END SOLUTION
+
+Without a STUB part, students see ``raise NotImplementedError("TODO")``.
+
+    python scripts/build_notebooks.py --stubs       # writes labs/ for main
+    python scripts/build_notebooks.py --solutions   # writes labs/ for this branch
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+from pathlib import Path
+
+import nbformat
+
+ROOT = Path(__file__).resolve().parent.parent
+CELL = re.compile(r"^#%% (md|code|task)\s*$")
+
+
+def _resolve(code: str, solutions: bool) -> str:
+    out, mode, indent = [], None, ""
+    for line in code.splitlines():
+        tag = line.strip()
+        if tag == "### BEGIN SOLUTION":
+            mode, indent, stub = "sol", line[: len(line) - len(line.lstrip())], []
+            continue
+        if tag == "### STUB" and mode:
+            mode = "stub"
+            continue
+        if tag == "### END SOLUTION" and mode:
+            if not solutions:
+                out.extend(stub or [indent + 'raise NotImplementedError("TODO")'])
+            mode = None
+            continue
+        if mode == "sol":
+            if solutions:
+                out.append(line)
+        elif mode == "stub":
+            stub.append(line)
+        else:
+            out.append(line)
+    return "\n".join(out).strip("\n")
+
+
+def build(src: Path, solutions: bool) -> nbformat.NotebookNode:
+    nb = nbformat.v4.new_notebook()
+    nb.metadata = {"kernelspec": {"name": "python3", "display_name": "Python 3", "language": "python"},
+                   "language_info": {"name": "python"}}
+    kind, buf = None, []
+
+    def flush():
+        if kind is None:
+            return
+        text = "\n".join(buf).strip("\n")
+        if kind == "md":
+            nb.cells.append(nbformat.v4.new_markdown_cell(text))
+        else:
+            cell = nbformat.v4.new_code_cell(_resolve(text, solutions))
+            if kind == "task":
+                cell.metadata["tags"] = ["task"]
+            nb.cells.append(cell)
+
+    for line in src.read_text().splitlines():
+        m = CELL.match(line)
+        if m:
+            flush()
+            kind, buf = m.group(1), []
+        else:
+            buf.append(line)
+    flush()
+    for i, cell in enumerate(nb.cells):   # stable ids keep diffs small
+        cell["id"] = f"{src.stem}-{i:02d}"
+    return nb
+
+
+def main() -> None:
+    p = argparse.ArgumentParser()
+    g = p.add_mutually_exclusive_group(required=True)
+    g.add_argument("--stubs", action="store_true")
+    g.add_argument("--solutions", action="store_true")
+    p.add_argument("--out", default=str(ROOT / "labs"))
+    args = p.parse_args()
+    out = Path(args.out)
+    out.mkdir(exist_ok=True)
+    for src in sorted((ROOT / "nbsrc").glob("*.txt")):
+        nb = build(src, args.solutions)
+        nbformat.write(nb, out / f"{src.stem}.ipynb")
+        print("wrote", out / f"{src.stem}.ipynb")
+
+
+if __name__ == "__main__":
+    main()
