@@ -19,7 +19,7 @@ Each `labN_*.txt` here is one notebook, with the reference solution inside
 
 1. Edit the source, then `python scripts/build_notebooks.py --solutions`.
 2. If a task or its inputs changed: `python scripts/make_expected.py`.
-3. `pytest tests` must pass. Commit on `master`.
+3. `scripts/check_all.sh` must end with ALL GOOD. Commit on `master`.
 4. `scripts/sync_students.sh "Short message"` updates the `students` branch.
 5. `git checkout solutions && git merge --ff-only master && git checkout master`.
 6. `git push origin master solutions students`.
