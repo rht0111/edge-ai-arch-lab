@@ -1,7 +1,11 @@
 """Regenerate archsim/data/expected.json from the reference notebooks.
 
-Run on the solutions branch, where labs/ holds the solved notebooks:
-    python scripts/make_expected.py
+Run where labs/ holds the solved notebooks (master or solutions):
+    python scripts/make_expected.py           # rewrite the file
+    python scripts/make_expected.py --check   # only compare, within tolerance
+
+--check is what CI uses: the last digit of a float can differ between numpy
+builds, so a byte-for-byte comparison of the JSON would fail for no reason.
 """
 
 from __future__ import annotations
@@ -17,14 +21,29 @@ from archsim import checks  # noqa: E402
 from nbtasks import TASKS, load  # noqa: E402
 
 
-def main() -> None:
+def compute() -> dict:
     out = {}
     for task, (notebook, name) in TASKS.items():
         fn = load(notebook)[name]
         out[task] = {"cases": [str(c) for c in checks.CASES[task]],
                      "values": checks.run(task, fn), "rtol": 1e-6}
-    checks.EXPECTED.write_text(json.dumps(out, indent=1) + "\n")
-    print(f"wrote {checks.EXPECTED} ({len(out)} checks)")
+    return out
+
+
+def main() -> None:
+    out = compute()
+    if "--check" not in sys.argv:
+        checks.EXPECTED.write_text(json.dumps(out, indent=1) + "\n")
+        print(f"wrote {checks.EXPECTED} ({len(out)} checks)")
+        return
+    stored = json.loads(checks.EXPECTED.read_text())
+    stale = sorted(set(out) ^ set(stored))
+    stale += [t for t in out if t in stored and (
+        out[t]["cases"] != stored[t]["cases"]
+        or not checks._close(out[t]["values"], stored[t]["values"], 1e-9))]
+    if stale:
+        sys.exit(f"expected.json is out of date for: {', '.join(stale)}; run scripts/make_expected.py")
+    print(f"expected.json matches the solutions ({len(out)} checks)")
 
 
 if __name__ == "__main__":
