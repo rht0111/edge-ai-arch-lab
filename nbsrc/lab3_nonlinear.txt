@@ -1,8 +1,8 @@
 #%% md
-# Lab 3: Non-linear functions in hardware
+# Lab 3. Non-linear functions in hardware
 
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/rht0111/edge-ai-arch-lab/blob/master/labs/lab3_nonlinear.ipynb)
-&nbsp; Background: [course page for Lab 3](https://rht0111.github.io/edge-ai-arch-lab/labs/lab3/) &nbsp; Time: 25 min
+Background on the [course page for Lab 3](https://rht0111.github.io/edge-ai-arch-lab/labs/lab3/). Time 25 min.
 
 A MAC array cannot compute `exp` or `erf`. In Lab 0 softmax and GELU were
 under 2% of the FLOPs but a large share of the compute energy when run in
@@ -11,12 +11,12 @@ accuracy.
 
 **Goals**
 
-1. Implement softmax and GELU three ways: float reference, lookup table (LUT),
-   and a shift-based approximation.
+1. Implement softmax and GELU three ways, as a float reference, a lookup
+   table (LUT) and a shift-based approximation.
 2. Plot error against cost per element.
 3. Plug your softmax into attention and check the output.
 #%% code
-# Setup: installs archsim in JupyterLite or Colab; does nothing on a local install.
+# Setup. Installs archsim in JupyterLite or Colab, and does nothing on a local install.
 import sys
 if "pyodide" in sys.modules:
     import piplite
@@ -42,11 +42,11 @@ exp(-8) ≈ 3e-4 is already negligible. So a table covering [-8, 0] suffices.
 [lo, hi) into `n` equal bins, stores `f` evaluated at the **centre** of each
 bin, and returns for each x the entry of its bin. Inputs outside the range
 use the first or the last entry (clamp the index).
-In hardware: one subtract, one multiply (by n / (hi - lo)), one truncation, one table read.
+In hardware this is one subtract, one multiply (by n / (hi - lo)), one truncation and one table read.
 #%% task
 def make_lut(f, lo, hi, n):
     step = (hi - lo) / n
-    # TODO: build the table once, return a function that indexes it
+    # TODO build the table once, then return a function that indexes it
     ### BEGIN SOLUTION
     table = f(lo + step * (np.arange(n) + 0.5))
 
@@ -82,7 +82,7 @@ def exp_shift(x):
 check("lab3.exp_shift", exp_shift)
 #%% md
 **Task 3.** A softmax that takes the exponential as an argument. Work along
-the last axis: subtract the row max, apply `exp_fn`, divide by the row sum.
+the last axis. Subtract the row max, apply `exp_fn`, and divide by the row sum.
 #%% task
 def softmax_approx(x, exp_fn):
     # TODO
@@ -97,14 +97,14 @@ check("lab3.softmax", softmax_approx)
 ## 3. Error against cost
 
 The cost per element below uses the 45 nm table of `archsim.energy`.
-Floating point pays FP32 software prices; the others run on 16-bit integer
+Floating point pays FP32 software prices, and the others run on 16-bit integer
 hardware. I-BERT (Kim et al., ICML 2021) uses a second-order polynomial after
 a range reduction, between the LUT and the shift in cost.
 #%% code
 lut16, lut64 = make_lut(np.exp, -8, 0, 16), make_lut(np.exp, -8, 0, 64)
-index_ops = {"add": 1, "mul": 1, "floor": 1}     # bin index; the table read is added below
+index_ops = {"add": 1, "mul": 1, "floor": 1}     # bin index, the table read is added below
 methods = {
-    # name: (exp function, pJ per element)
+    # name -> (exp function, pJ per element)
     "float": (np.exp, energy.primitive_energy({"exp": 1}, 32)),
     "LUT-16": (lut16, energy.primitive_energy(index_ops, 16) + energy.sram_energy(2, 16 * 2)),
     "LUT-64": (lut64, energy.primitive_energy(index_ops, 16) + energy.sram_energy(2, 64 * 2)),
@@ -119,11 +119,13 @@ for name, (fn, pj) in methods.items():
     print(f"{name:<8} {pj:6.2f} pJ/elem   max |error| {err:.1e}")
     if name != "float":   # the reference has zero error by definition
         ax.loglog(pj, err, "o")
-        ax.annotate(f"{name}: {pj:.2f} pJ, error {err:.1e}", (pj, err), xytext=(7, -3),
+        ax.annotate(f"{name} ({pj:.2f} pJ, error {err:.1e})", (pj, err), xytext=(7, -3),
                     textcoords="offset points", fontsize=8)
 ax.set_xlim(0.6, 12)
-ax.set_xlabel("exp cost (pJ / element)"); ax.set_ylabel("max |softmax error|")
-ax.set_title(f"float reference: {methods['float'][1]:.1f} pJ / element");
+ax.set_xlabel("exp cost (pJ / element)")
+ax.set_ylabel("max |softmax error|")
+ax.set_title(f"the float reference costs {methods['float'][1]:.1f} pJ / element")
+plt.show()
 #%% md
 ## 4. Inside attention
 
@@ -137,7 +139,7 @@ for name, (fn, _) in methods.items():
     out = nl.attention(Q, K, V, lambda s, fn=fn: softmax_approx(s, fn))
     rel = np.abs(out - out_ref).max() / np.abs(out_ref).max()
     same = np.mean(np.argmax(softmax_approx(Q @ K.T / 8, fn), -1) == np.argmax(Q @ K.T, -1))
-    print(f"{name:<8} max rel. error of the output {rel:.1e}   same top-1 key: {100 * same:.0f}%")
+    print(f"{name:<8} max rel. error of the output {rel:.1e}   same top-1 key in {100 * same:.0f}% of rows")
 #%% md
 ## 5. GELU three ways
 
@@ -157,22 +159,26 @@ axes[0].plot(x, exact, "k", label="exact (erf)")
 for name, fn in {"LUT-32": gelu_lut, "I-BERT": nl.gelu_ibert, "x·sigmoid(1.702x)": nl.gelu_sigmoid}.items():
     y = fn(x)
     axes[0].plot(x, y, "--", label=name)
-    axes[1].plot(x, y - exact, label=f"{name}: max {np.abs(y - exact).max():.3f}")
-axes[0].set_xlabel("x"); axes[0].set_ylabel("GELU(x)"); axes[0].set_title("GELU and its approximations")
-axes[1].set_xlabel("x"); axes[1].set_ylabel("approximation - exact")
-axes[1].set_title("error (legend: max |error|)")
-axes[0].legend(fontsize=8); axes[1].legend(fontsize=8)
+    axes[1].plot(x, y - exact, label=f"{name} (max {np.abs(y - exact).max():.3f})")
+axes[0].set_xlabel("x")
+axes[0].set_ylabel("GELU(x)")
+axes[0].set_title("GELU and its approximations")
+axes[1].set_xlabel("x")
+axes[1].set_ylabel("approximation - exact")
+axes[1].set_title("error, with the max |error| in the legend")
+axes[0].legend(fontsize=8)
+axes[1].legend(fontsize=8)
 fig.tight_layout()
 #%% md
 ## Stretch
 
 1. **On a CGRA.** `archsim.cgra` maps a small dataflow graph onto a 4x4
    reconfigurable array. The cell below maps three copies of the shift-based
-   exp twice: minimising latency (operations may share a PE) and as a spatial
-   pipeline (one operation per PE, a new input every cycle). Compare energy per
+   exp twice, once minimising latency (operations may share a PE) and once as
+   a spatial pipeline (one operation per PE, a new input every cycle). Compare energy per
    element and throughput with a fixed-function unit. What does the flexibility
    cost, and what does it buy? (Reconfigurable arrays for such kernels are an
-   active research topic; see the course page.)
+   active research topic, see the course page.)
 2. Quantise the LUT entries of `lut16` to 8 bits. Does the softmax error change?
 3. Improve `exp_shift` with a better 2^f, e.g. 1 + f - 0.343·f·(1 - f).
    How much does the error drop, and what does it cost?
@@ -183,16 +189,16 @@ fig, axes = plt.subplots(1, 2, figsize=(9, 4.5))
 for ax, pipelined in zip(axes, (False, True)):
     mp = cgra.map_dfg(dfg, pipelined=pipelined)
     cgra.draw(mp, dfg, ax)
-    ax.set_title(f"{'pipelined' if pipelined else 'latency-first'}: {mp.cycles} cycles, "
+    ax.set_title(f"{'pipelined' if pipelined else 'latency-first'}, {mp.cycles} cycles, "
                  f"{mp.hops} hops, {mp.energy_pj / 3:.2f} pJ/element", fontsize=10)
-    print(f"CGRA, {'pipelined' if pipelined else 'latency-first'}: {mp.energy_pj / 3:.2f} pJ/element, "
+    print(f"CGRA {'pipelined' if pipelined else 'latency-first'}, {mp.energy_pj / 3:.2f} pJ/element, "
           f"{3 * mp.graphs_per_cycle:.1f} elements/cycle, utilization {mp.utilization:.2f}")
-print(f"fixed function: {ff['energy_pj']:.2f} pJ/element, 1 element/cycle, {ff['area_um2']:.0f} um^2 "
-      f"(the whole CGRA: {16 * cgra.PE_AREA_UM2:.0f} um^2)")
+print(f"fixed function, {ff['energy_pj']:.2f} pJ/element, 1 element/cycle, {ff['area_um2']:.0f} um^2 "
+      f"(the whole CGRA takes {16 * cgra.PE_AREA_UM2:.0f} um^2)")
 #%% md
 ## Reflection
 
 "Non-linear functions are a hardware design problem." Using your plot of
 error against cost, pick one exp implementation for the 1 mW chip and justify
-it in two sentences: what accuracy did you require, and where did that
+it in two sentences. What accuracy did you require, and where did that
 requirement come from?

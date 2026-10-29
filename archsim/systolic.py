@@ -2,16 +2,16 @@
 
 Two dataflows (terminology from Chen, Emer and Sze, ISCA 2016 / Sze et al. 2017):
 
-* Output-stationary (OS): each PE owns one output C[i, j]. Rows of A enter
+* Output-stationary (OS). Each PE owns one output C[i, j]. Rows of A enter
   from the left, columns of B from the top, both skewed by one cycle per row
   or column. A tile covers up to rows x cols outputs and streams all of K.
-* Weight-stationary (WS): each PE holds one weight W[k, j], loaded before
+* Weight-stationary (WS). Each PE holds one weight W[k, j], loaded before
   compute. Rows of A enter from the left (skewed), partial sums flow down and
   leave at the bottom. A tile covers up to rows x cols weights and streams all
   M input rows.
 
 The tile simulators move real values, so the result can be checked against
-``A @ B``. A full GEMM is a sequence of tiles; we assume tiles do not overlap
+``A @ B``. A full GEMM is a sequence of tiles. We assume tiles do not overlap
 (no double buffering), which keeps the cycle counts easy to reason about.
 """
 
@@ -37,7 +37,7 @@ class TileResult:
 
 
 def _skew(X: np.ndarray, lanes: int, steps: int) -> tuple[np.ndarray, np.ndarray]:
-    """Stream for ``lanes`` input ports: lane i sees X[i, t - i] at cycle t."""
+    """Stream for ``lanes`` input ports, where lane i sees X[i, t - i] at cycle t."""
     vals = np.zeros((lanes, steps))
     valid = np.zeros((lanes, steps), dtype=bool)
     for i in range(min(lanes, X.shape[0])):
@@ -48,7 +48,7 @@ def _skew(X: np.ndarray, lanes: int, steps: int) -> tuple[np.ndarray, np.ndarray
 
 
 def simulate_os_tile(A, B, rows: int = 4, cols: int = 4, trace: bool = False) -> TileResult:
-    """Output-stationary tile: A is (m x K) with m <= rows, B is (K x n) with n <= cols."""
+    """Output-stationary tile. A is (m x K) with m <= rows, B is (K x n) with n <= cols."""
     A, B = np.asarray(A, float), np.asarray(B, float)
     m, K = A.shape
     n = B.shape[1]
@@ -57,8 +57,10 @@ def simulate_os_tile(A, B, rows: int = 4, cols: int = 4, trace: bool = False) ->
     a_in, a_ok = _skew(A, rows, steps)
     b_in, b_ok = _skew(B.T, cols, steps)
 
-    a = np.zeros((rows, cols)); va = np.zeros((rows, cols), bool)
-    b = np.zeros((rows, cols)); vb = np.zeros((rows, cols), bool)
+    a = np.zeros((rows, cols))
+    va = np.zeros((rows, cols), bool)
+    b = np.zeros((rows, cols))
+    vb = np.zeros((rows, cols), bool)
     acc = np.zeros((rows, cols))
     frames, macs, last = [], 0, -1
     for t in range(steps):
@@ -78,7 +80,7 @@ def simulate_os_tile(A, B, rows: int = 4, cols: int = 4, trace: bool = False) ->
 
 
 def simulate_ws_tile(A, W, rows: int = 4, cols: int = 4, trace: bool = False) -> TileResult:
-    """Weight-stationary tile: W is (k x n) with k <= rows, n <= cols; A is (M x k).
+    """Weight-stationary tile. W is (k x n) with k <= rows and n <= cols, A is (M x k).
 
     Loading W takes one cycle per array row used (weights shift in from the top).
     """
@@ -87,14 +89,16 @@ def simulate_ws_tile(A, W, rows: int = 4, cols: int = 4, trace: bool = False) ->
     n = W.shape[1]
     assert k <= rows and n <= cols and W.shape[0] == k
     load = k
-    w = np.zeros((rows, cols)); w[:k, :n] = W
+    w = np.zeros((rows, cols))
+    w[:k, :n] = W
     steps = M + rows + cols
     x_in, x_ok = _skew(A.T, rows, steps)           # row r of the array gets column r of A
     tok_in = np.full((rows, steps), -1)
     for r in range(k):
         tok_in[r, r:r + M] = np.arange(M)
 
-    x = np.zeros((rows, cols)); vx = np.zeros((rows, cols), bool)
+    x = np.zeros((rows, cols))
+    vx = np.zeros((rows, cols), bool)
     tok = np.full((rows, cols), -1)
     psum = np.zeros((rows, cols))
     out = np.zeros((M, n))
@@ -111,7 +115,7 @@ def simulate_ws_tile(A, W, rows: int = 4, cols: int = 4, trace: bool = False) ->
         active = vx & (np.arange(cols) < n)[None, :]
         above = np.vstack([np.zeros((1, cols)), psum[:-1]])     # psums move down
         psum = above + np.where(active, x * w, 0.0)
-        psum[k:] = 0.0                     # results leave at row k-1; unused rows are bypassed
+        psum[k:] = 0.0                     # results leave at row k-1, unused rows are bypassed
         if active.any():
             macs += int(active.sum())
             last = t
@@ -180,5 +184,5 @@ def matmul(A, B, rows: int = 4, cols: int = 4, dataflow: str = "os") -> tuple[np
 
 
 def ideal_cycles(M: int, K: int, N: int, rows: int, cols: int) -> int:
-    """Lower bound: every PE busy every cycle."""
+    """Lower bound, with every PE busy every cycle."""
     return math.ceil(M * K * N / (rows * cols))

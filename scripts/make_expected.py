@@ -1,11 +1,12 @@
 """Regenerate archsim/data/expected.json from the reference notebooks.
 
-Run where labs/ holds the solved notebooks (master or solutions):
+Run it where labs/ holds the solved notebooks (master or solutions).
+
     python scripts/make_expected.py           # rewrite the file
     python scripts/make_expected.py --check   # only compare, within tolerance
 
---check is what CI uses: the last digit of a float can differ between numpy
-builds, so a byte-for-byte comparison of the JSON would fail for no reason.
+CI uses --check, because the last digit of a float can differ between numpy
+builds and a byte-for-byte comparison of the JSON would fail for no reason.
 """
 
 from __future__ import annotations
@@ -17,8 +18,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tests"))
 
-from archsim import checks  # noqa: E402
-from nbtasks import TASKS, load  # noqa: E402
+from archsim import checks
+from nbtasks import TASKS, load
 
 
 def compute() -> dict:
@@ -42,7 +43,7 @@ def main() -> None:
         out[t]["cases"] != stored[t]["cases"]
         or not checks._close(out[t]["values"], stored[t]["values"], 1e-9))]
     if stale:
-        sys.exit(f"expected.json is out of date for: {', '.join(stale)}; run scripts/make_expected.py")
+        sys.exit(f"expected.json is out of date for {', '.join(stale)}. Run scripts/make_expected.py")
     print(f"expected.json matches the solutions ({len(out)} checks)")
 
 

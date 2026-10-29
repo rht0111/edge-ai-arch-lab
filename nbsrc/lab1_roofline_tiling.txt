@@ -1,8 +1,8 @@
 #%% md
-# Lab 1: Roofline and tiling
+# Lab 1. Roofline and tiling
 
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/rht0111/edge-ai-arch-lab/blob/master/labs/lab1_roofline_tiling.ipynb)
-&nbsp; Background: [course page for Lab 1](https://rht0111.github.io/edge-ai-arch-lab/labs/lab1/) &nbsp; Time: 25 min
+Background on the [course page for Lab 1](https://rht0111.github.io/edge-ai-arch-lab/labs/lab1/). Time 25 min.
 
 Your edge chip has a 16x16 MAC array at 50 MHz (25.6 GOP/s peak) and a narrow
 LPDDR link of 0.4 GB/s. Its on-chip buffer is **64 KiB**.
@@ -13,7 +13,7 @@ LPDDR link of 0.4 GB/s. Its on-chip buffer is **64 KiB**.
 2. Choose GEMM tile sizes that minimise DRAM traffic under the 64 KiB buffer.
 3. Decide whether the attention GEMMs are memory-bound.
 #%% code
-# Setup: installs archsim in JupyterLite or Colab; does nothing on a local install.
+# Setup. Installs archsim in JupyterLite or Colab, and does nothing on a local install.
 import sys
 if "pyodide" in sys.modules:
     import piplite
@@ -42,19 +42,20 @@ chip can ever do.
 block = workloads.vit_block(seq=197)
 pts = [(op.name, op.intensity()) for op in block]
 ax = roofline.plot(NPU, pts)
-ax.set_title("ViT-Tiny block, minimum traffic (int8)");
+ax.set_title("ViT-Tiny block, minimum traffic (int8)")
+plt.show()
 #%% md
-Every GEMM sits right of the ridge: compute-bound, if the buffer were large
-enough. It is not: QKV alone has 110 kB of weights.
+Every GEMM sits right of the ridge, so it would be compute-bound if the
+buffer were large enough. It is not, since QKV alone has 110 kB of weights.
 
 ## 2. Tiling
 
-With a finite buffer we compute C in tiles. We use this loop nest
-(output-stationary at the buffer level):
+With a finite buffer we compute C in tiles, with the loop nest below
+(output-stationary at the buffer level).
 
 ```
 for m0 in range(0, M, Tm):          # rows of C
-    for n0 in range(0, N, Tn):      # columns of C; the C tile stays on chip
+    for n0 in range(0, N, Tn):      # columns of C, the C tile stays on chip
         for k0 in range(0, K, Tk):
             load A[m0:m0+Tm, k0:k0+Tk]   unless it is already in the buffer
             load B[k0:k0+Tk, n0:n0+Tn]   unless it is already in the buffer
@@ -65,7 +66,7 @@ for m0 in range(0, M, Tm):          # rows of C
 The buffer holds one A tile, one B tile (`bits`-bit elements) and one C
 tile of 32-bit accumulators. A tile is reloaded whenever the loop asks for a
 different tile than the one already held. Edge tiles may be smaller than
-Tm x Tk; count the elements actually moved.
+Tm x Tk, so count the elements actually moved.
 
 **Task 1.** Buffer footprint in bytes of one A, one B and one C tile.
 #%% task
@@ -88,7 +89,7 @@ def tiled_traffic(M, K, N, Tm, Tk, Tn, bits=8):
     """DRAM bytes moved by the tiled GEMM above."""
     b = bits / 8
     nm, nn, nk = math.ceil(M / Tm), math.ceil(N / Tn), math.ceil(K / Tk)
-    # TODO: count reads of A, reads of B, writes of C
+    # TODO count the reads of A, the reads of B and the writes of C
     ### BEGIN SOLUTION
     a_reads = 1 if nk == 1 else nn          # A tile only changes with m0 when K fits
     b_reads = 1 if (nk == 1 and nn == 1) else nm
@@ -98,11 +99,11 @@ def tiled_traffic(M, K, N, Tm, Tk, Tn, bits=8):
 check("lab1.traffic", tiled_traffic)
 #%% md
 **Task 3.** Search the tile sizes. Try every combination of the candidates
-below and keep those whose footprint fits the buffer; return
+below, keep those whose footprint fits the buffer, and return
 `(minimum traffic, (Tm, Tk, Tn))`. Ties can be broken any way you like.
-Tm and Tn start at 16: a smaller output tile would leave most of the 16x16
-array idle. Tk may be anything; in this loop nest it only matters through
-whether all of K fits at once.
+Tm and Tn start at 16, because a smaller output tile would leave most of the
+16x16 array idle. Tk may be anything, since in this loop nest it only matters
+through whether all of K fits at once.
 #%% task
 def candidates(dim, smallest=1):
     """Powers of two from `smallest` up to (not including) dim, plus dim itself."""
@@ -115,7 +116,7 @@ def candidates(dim, smallest=1):
 
 def best_tiling(M, K, N, buffer_bytes=64 * 1024, bits=8):
     best = (math.inf, None)
-    # TODO: loop over candidates(M, 16), candidates(K), candidates(N, 16)
+    # TODO loop over candidates(M, 16), candidates(K) and candidates(N, 16)
     ### BEGIN SOLUTION
     for Tm in candidates(M, 16):
         for Tk in candidates(K):
@@ -147,11 +148,12 @@ for op in block:
     real.append((op.name, inten))
     print(f"{op.name:<8}{str(tile):<18}{t / minimum:>12.2f}{inten:>8.1f}  {NPU.bound(inten)}")
 ax = roofline.plot(NPU, real)
-ax.set_title("GEMMs with a 64 KiB buffer (int8)");
+ax.set_title("GEMMs with a 64 KiB buffer (int8)")
+plt.show()
 #%% md
 Most GEMMs reach the minimum traffic with 64 KiB, at least at 197 tokens. Now
 shrink the buffer and watch the DRAM energy of the whole block (all GEMMs),
-compared with the energy of its MACs:
+compared with the energy of its MACs.
 #%% code
 mac_pj = sum(op.macs for op in block) * energy.mac_energy(8)
 kib = [8, 16, 32, 64, 128, 256]
@@ -169,9 +171,12 @@ for seq, style in ((197, "o-"), (1024, "s--")):
         plt.annotate(f"{v:.1f}x", (k, v), textcoords="offset points",
                      xytext=(0, 7 if v >= w else -14), ha="center", fontsize=8)
 plt.xticks(kib, [str(k) for k in kib])
-plt.axhline(1, color="grey", ls=":")
-plt.xlabel("buffer (KiB)"); plt.ylabel("DRAM energy / MAC energy"); plt.legend()
-plt.title("GEMMs of one block, int8");
+plt.axhline(1, color="grey", ls="dotted")
+plt.xlabel("buffer (KiB)")
+plt.ylabel("DRAM energy / MAC energy")
+plt.legend()
+plt.title("GEMMs of one block, int8")
+plt.show()
 #%% md
 ## 4. Is attention memory-bound?
 

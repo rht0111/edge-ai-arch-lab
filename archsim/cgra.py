@@ -3,11 +3,11 @@
 A size x size mesh of PEs, each able to run one word-level operation per
 cycle and to pass a value to a neighbour in one cycle per hop. A small
 dataflow graph (DFG) is placed and scheduled greedily, operation by operation
-in topological order: each operation goes to the PE where it can start
+in topological order. Each operation goes to the PE where it can start
 earliest, accounting for the hops its operands need.
 
-This is a teaching model, not a compiler: no modulo scheduling, no register
-pressure, unlimited routing bandwidth. It is enough to show the two costs a
+This is a teaching model, not a compiler. It has no modulo scheduling, no
+register pressure and unlimited routing bandwidth. It is enough to show the two costs a
 CGRA pays for flexibility, routing hops and per-operation configuration,
 against a fixed-function unit for the same graph.
 """
@@ -19,9 +19,9 @@ import math
 
 from . import energy
 
-HOP_PJ = 0.05      # assumed: one 16-bit word over one PE-to-PE link
-CONFIG_PJ = 0.1    # assumed: per-operation context/instruction fetch
-PE_AREA_UM2 = 3000.0  # assumed: 16-bit ALU + multiplier + registers + switch
+HOP_PJ = 0.05      # assumed, one 16-bit word over one PE-to-PE link
+CONFIG_PJ = 0.1    # assumed, per-operation context or instruction fetch
+PE_AREA_UM2 = 3000.0  # assumed, 16-bit ALU + multiplier + registers + switch
 
 
 @dataclass(frozen=True)
@@ -71,7 +71,7 @@ def map_dfg(dfg: list[Node], size: int = 4, bits: int = 16, pipelined: bool = Fa
     By default the mapper minimises the latency of one graph and may stack
     dependent operations on the same PE. With ``pipelined=True`` every PE runs
     a single operation (a spatial pipeline), so a new graph can start every
-    cycle at the price of more hops; the graph must fit on size x size PEs.
+    cycle at the price of more hops. The graph must fit on size x size PEs.
     """
     if pipelined and len(dfg) > size * size:
         raise ValueError(f"{len(dfg)} operations do not fit on {size * size} PEs")
@@ -112,7 +112,7 @@ def map_dfg(dfg: list[Node], size: int = 4, bits: int = 16, pipelined: bool = Fa
 
 
 def fixed_function(dfg: list[Node], bits: int = 16) -> dict:
-    """Same graph as a hard-wired pipeline: no hops, no configuration energy."""
+    """Same graph as a hard-wired pipeline, with no hops and no configuration energy."""
     depth = {}
     for n in dfg:
         depth[n.name] = 1 + max((depth.get(s, 0) for s in n.inputs), default=0)
@@ -135,7 +135,7 @@ def replicate(dfg: list[Node], copies: int) -> list[Node]:
 # --- example graphs ----------------------------------------------------------
 
 def dfg_exp_shift() -> list[Node]:
-    """exp(x) = 2^(x log2 e) with 2^f ~ 1 + f: the shift-based exp of Lab 3."""
+    """exp(x) = 2^(x log2 e) with 2^f ~ 1 + f, the shift-based exp of Lab 3."""
     return [
         Node("y", "mul", ("x",)),        # y = x * log2(e)
         Node("z", "floor", ("y",)),
@@ -190,7 +190,10 @@ def draw(mp: Mapping, dfg: list[Node], ax=None):
             if s in mp.place:
                 (r0, c0), (r1, c1) = mp.place[s], mp.place[node.name]
                 ax.annotate("", (c1 + 0.47, n - 1 - r1 + 0.47), (c0 + 0.47, n - 1 - r0 + 0.47),
-                            arrowprops=dict(arrowstyle="->", color="tab:blue", alpha=0.5))
-    ax.set_xlim(0, n); ax.set_ylim(0, n); ax.set_aspect("equal"); ax.axis("off")
+                            arrowprops=dict(arrowstyle="->", color="C0", alpha=0.5))
+    ax.set_xlim(0, n)
+    ax.set_ylim(0, n)
+    ax.set_aspect("equal")
+    ax.axis("off")
     ax.set_title(f"{mp.n_ops} ops, {mp.cycles} cycles, {mp.hops} hops")
     return ax

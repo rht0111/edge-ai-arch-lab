@@ -28,7 +28,7 @@ jobs:
         run: |
           python -m build --wheel --outdir lite/pypi .
           pip download --no-deps --only-binary :all: --dest lite/pypi ipywidgets jupyterlab_widgets
-      # The site must never serve solutions: on the instructor branches the
+      # The site must never serve solutions. On the instructor branches the
       # student notebooks are built from nbsrc/, elsewhere labs/ already are.
       - name: Student notebooks
         run: |

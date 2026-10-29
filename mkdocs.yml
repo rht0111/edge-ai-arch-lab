@@ -41,10 +41,10 @@ nav:
   - Home: index.md
   - Setup: setup.md
   - Labs:
-      - "Lab 0: Profile a Transformer": labs/lab0.md
-      - "Lab 1: Roofline and tiling": labs/lab1.md
-      - "Lab 2: Systolic arrays": labs/lab2.md
-      - "Lab 3: Non-linear functions": labs/lab3.md
-      - "Lab 4: Design challenge": labs/lab4.md
+      - "Lab 0. Profile a Transformer": labs/lab0.md
+      - "Lab 1. Roofline and tiling": labs/lab1.md
+      - "Lab 2. Systolic arrays": labs/lab2.md
+      - "Lab 3. Non-linear functions": labs/lab3.md
+      - "Lab 4. Design challenge": labs/lab4.md
   - Going further: going-further.md
   - References: references.md

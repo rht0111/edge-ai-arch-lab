@@ -3,7 +3,7 @@
 ILLUSTRATIVE NUMBERS. The arithmetic and memory figures are the 45 nm, 0.9 V
 values popularised by M. Horowitz, "Computing's energy problem (and what we
 can do about it)", ISSCC 2014. Entries marked "assumed" or "interpolated" are
-not in that table; they are our own rough estimates, chosen to be plausible
+not in that table. They are our own rough estimates, chosen to be plausible
 and to keep the ratios right. Use them to compare designs with each other,
 never as absolute predictions for a real chip. See docs/references.md.
 """
@@ -13,18 +13,18 @@ from __future__ import annotations
 import math
 
 # --- Arithmetic energy, pJ per operation ---------------------------------
-# key: (operation, bits); "add"/"mul" are integer, "fadd"/"fmul" floating point.
+# Keys are (operation, bits). "add" and "mul" are integer, "fadd" and "fmul" floating point.
 OP_PJ = {
     ("add", 8): 0.03, ("add", 16): 0.05, ("add", 32): 0.1,
     ("mul", 8): 0.2, ("mul", 32): 3.1,
-    ("mul", 16): 0.8,   # interpolated: multiplier energy grows ~ bits^2
+    ("mul", 16): 0.8,   # interpolated, multiplier energy grows ~ bits^2
     ("mul", 4): 0.05,   # interpolated, same rule
     ("add", 4): 0.02,   # assumed
     ("fadd", 16): 0.4, ("fadd", 32): 0.9,
     ("fmul", 16): 1.1, ("fmul", 32): 3.7,
 }
 
-# --- Area, um^2 per unit (same source; 4/16-bit multipliers interpolated) --
+# --- Area, um^2 per unit (same source, 4/16-bit multipliers interpolated) --
 AREA_UM2 = {
     ("add", 8): 36, ("add", 16): 67, ("add", 32): 137,
     ("mul", 8): 282, ("mul", 32): 3495,
@@ -33,7 +33,7 @@ AREA_UM2 = {
     ("fmul", 16): 1640, ("fmul", 32): 7700,
 }
 FLIPFLOP_UM2_PER_BIT = 4.5   # assumed, 45 nm standard-cell DFF
-SRAM_MM2_PER_KIB = 0.005     # assumed: ~0.35 um^2 6T cell plus ~40% periphery
+SRAM_MM2_PER_KIB = 0.005     # assumed, ~0.35 um^2 6T cell plus ~40% periphery
 
 # --- Memory energy, pJ per 64-bit access ----------------------------------
 # Horowitz gives 10 pJ (8 KB), 20 pJ (32 KB) and 100 pJ (1 MB) SRAM reads.
@@ -61,9 +61,9 @@ def op_energy(op: str, bits: int = 32) -> float:
     if op in COMPLEX_AS_FP32:
         nm, na = COMPLEX_AS_FP32[op]
         return nm * OP_PJ[("fmul", 32)] + na * OP_PJ[("fadd", 32)]
-    if op in ("cmp", "shift", "floor"):   # assumed: about the cost of an adder
+    if op in ("cmp", "shift", "floor"):   # assumed, about the cost of an adder
         return OP_PJ[("add", bits if ("add", bits) in OP_PJ else 32)]
-    if op == "lut":                        # assumed: read of a tiny 32-byte table
+    if op == "lut":                        # assumed, read of a tiny 32-byte table
         return sram_energy(1, 32)
     if op == "mac":
         return mac_energy(bits)
@@ -92,7 +92,7 @@ def primitive_energy(counts: dict, bits: int = 32) -> float:
 
 
 def pe_area_um2(bits: int = 8) -> float:
-    """A MAC processing element: multiplier, 32-bit adder and its registers."""
+    """A MAC processing element, made of a multiplier, a 32-bit adder and their registers."""
     regs = (2 * bits + 32) * FLIPFLOP_UM2_PER_BIT
     return AREA_UM2[("mul", bits)] + AREA_UM2[("add", 32)] + regs
 

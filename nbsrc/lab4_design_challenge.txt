@@ -1,8 +1,8 @@
 #%% md
-# Lab 4: Design challenge
+# Lab 4. Design challenge
 
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/rht0111/edge-ai-arch-lab/blob/master/labs/lab4_design_challenge.ipynb)
-&nbsp; Background: [course page for Lab 4](https://rht0111.github.io/edge-ai-arch-lab/labs/lab4/) &nbsp; Time: 25 min
+Background on the [course page for Lab 4](https://rht0111.github.io/edge-ai-arch-lab/labs/lab4/). Time 25 min.
 
 Time to commit to a chip. You choose:
 
@@ -10,17 +10,17 @@ Time to commit to a chip. You choose:
 |---|---|
 | `array` | the MAC array is array x array PEs (4 to 64) |
 | `buffer_kib` | on-chip SRAM, KiB |
-| `bits` | weight and activation precision: 4, 8 or 16 |
+| `bits` | weight and activation precision, 4, 8 or 16 |
 | `softmax_lanes`, `gelu_lanes` | lanes of an optional special unit (0 = run on the host core) |
 
-**Rules.** Total area at most **1.0 mm²** (45 nm, illustrative). Rank:
-lowest **energy per ViT-Tiny inference**; latency breaks ties. Also report the
-frame rate your chip sustains at an average power of 1 mW.
+**Rules.** The total area is at most **1.0 mm²** (45 nm, illustrative). The
+lowest **energy per ViT-Tiny inference** wins, and latency breaks ties. Also
+report the frame rate your chip sustains at an average power of 1 mW.
 
-At the end, export `submission.json`; the class Pareto plot is drawn from
+At the end, export `submission.json`. The class Pareto plot is drawn from
 everyone's submissions.
 #%% code
-# Setup: installs archsim in JupyterLite or Colab; does nothing on a local install.
+# Setup. Installs archsim in JupyterLite or Colab, and does nothing on a local install.
 import sys
 if "pyodide" in sys.modules:
     import piplite
@@ -41,7 +41,7 @@ from archsim.checks import check
 ## 1. The baseline
 
 `evaluate` returns latency, energy, area and their breakdowns. Read the module
-docstring of `archsim.design` for what the model assumes; you are allowed to
+docstring of `archsim.design` for what the model assumes. You are allowed to
 disagree with it in your reflection.
 #%% code
 def plain_log_ticks(ax, xticks=(0.2, 0.3, 0.5, 0.7, 1, 1.5, 2, 3),
@@ -60,7 +60,7 @@ def report(d, ax=None):
           f"area {m['area_mm2']:.3f} mm2 {'(ok)' if m['within_budget'] else '(OVER BUDGET)'} | "
           f"{m['fps_at_1mw']:.3f} fps at 1 mW")
     if m["notes"]:
-        print("  note:", *m["notes"])
+        print("  note,", *m["notes"])
     latency_ms = {k: v / design.FREQ_HZ * 1e3 for k, v in m["cycles_breakdown"].items()}
     parts = (("energy", m["energy_breakdown_uj"], "uJ per inference", "%.0f"),
              ("latency", latency_ms, "ms per inference", "%.1f"),
@@ -77,8 +77,8 @@ def report(d, ax=None):
 
 baseline = report(Design())
 #%% md
-Before changing anything, answer from the plots: what dominates the energy?
-What dominates the latency? What dominates the area?
+Before changing anything, answer three questions from the plots. What
+dominates the energy? What dominates the latency? What dominates the area?
 
 ## 2. A Pareto front
 
@@ -89,7 +89,7 @@ and strictly better in at least one. The non-dominated designs form the Pareto f
 `(area, energy)` pairs. Equal points do not dominate each other.
 #%% task
 def pareto_front(points):
-    # TODO: an O(n^2) double loop is fine
+    # TODO an O(n^2) double loop is fine
     ### BEGIN SOLUTION
     front = []
     for i, (a, e) in enumerate(points):
@@ -121,15 +121,18 @@ ax.scatter(area[~ok], en[~ok], s=10, c="0.75", label="over area budget")
 sc = ax.scatter(area[ok], en[ok], s=14, c=[designs[i].bits for i in np.nonzero(ok)[0]], cmap="viridis", label="within budget")
 f = sorted(front, key=lambda i: area[i])
 ax.plot(area[f], en[f], "r-", lw=1, label="Pareto front")
-ax.axvline(design.AREA_BUDGET_MM2, color="k", ls=":")
-ax.set_xscale("log"); ax.set_yscale("log")
-ax.set_xlabel("area (mm2)"); ax.set_ylabel("energy per inference (uJ)")
+ax.axvline(design.AREA_BUDGET_MM2, color="k", ls="dotted")
+ax.set_xscale("log")
+ax.set_yscale("log")
+ax.set_xlabel("area (mm2)")
+ax.set_ylabel("energy per inference (uJ)")
 b0 = min((i for i in range(len(designs)) if ok[i]), key=lambda i: en[i])
 ax.plot(area[b0], en[b0], "o", ms=12, mfc="none", mec="red", label="lowest energy within budget")
-ax.set_title(f"lowest energy within budget (ringed): {en[b0]:.0f} uJ at {area[b0]:.2f} mm2", fontsize=10)
+ax.set_title(f"lowest energy within budget (ringed), {en[b0]:.0f} uJ at {area[b0]:.2f} mm2", fontsize=10)
 plain_log_ticks(ax)
 fig.colorbar(sc, label="bits")
-ax.legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.14), ncol=2, frameon=False);
+ax.legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.14), ncol=2, frameon=False)
+plt.show()
 #%% code
 best = sorted((i for i in range(len(designs)) if ok[i]), key=lambda i: (en[i], metrics[i]["latency_ms"]))[:5]
 for i in best:
@@ -139,14 +142,14 @@ for i in best:
 
 **Task 2.** Pick your design. You may take one from the sweep or go outside
 the grid (other buffer sizes, unequal lanes). Be ready to defend it in one
-sentence: the sweep's winner is not automatically the best answer, because the
+sentence. The sweep's winner is not automatically the best answer, because the
 model ignores accuracy (4-bit) and many other things.
 #%% task
-TEAM = "team-name"   # TODO: your team name
+TEAM = "team-name"   # TODO your team name
 ### BEGIN SOLUTION
 my_design = Design(array=16, buffer_kib=128, bits=8, softmax_lanes=4, gelu_lanes=4)
 ### STUB
-my_design = Design()  # TODO: your choice
+my_design = Design()  # TODO your choice
 ### END SOLUTION
 #%% code
 mine = report(my_design)
@@ -155,17 +158,21 @@ assert mine["within_budget"], "over the area budget"
 fig, ax = plt.subplots(figsize=(6, 4))
 ax.scatter(area[ok], en[ok], s=10, c="0.7")
 ax.plot(area[f], en[f], "r-", lw=1)
-ax.plot(mine["area_mm2"], mine["energy_uj"], "*", ms=16, color="tab:orange", label=TEAM)
+ax.plot(mine["area_mm2"], mine["energy_uj"], "*", ms=16, color="C1", label=TEAM)
 ax.annotate(f"{mine['energy_uj']:.0f} uJ, {mine['latency_ms']:.0f} ms, {mine['area_mm2']:.3f} mm2",
             (mine["area_mm2"], mine["energy_uj"]), xytext=(8, 8), textcoords="offset points", fontsize=8)
-ax.set_xscale("log"); ax.set_yscale("log"); ax.legend()
+ax.set_xscale("log")
+ax.set_yscale("log")
+ax.legend()
 plain_log_ticks(ax)
-ax.set_xlabel("area (mm2)"); ax.set_ylabel("energy per inference (uJ)");
+ax.set_xlabel("area (mm2)")
+ax.set_ylabel("energy per inference (uJ)")
+plt.show()
 #%% md
 ## 5. Submit
 
 This writes `submission.json` next to the notebook. In JupyterLite, right-click
-it in the file browser and choose *Download*; then upload it where your
+it in the file browser, choose *Download*, and upload it where your
 instructor tells you. The metrics are recomputed from the design when the
 class plot is drawn, so only the design matters.
 #%% code

@@ -1,13 +1,13 @@
 """A Transformer encoder block as a list of operators with shapes.
 
-The model is deliberately small: each operator knows its shape, how many
+The model is deliberately small. Each operator knows its shape, how many
 arithmetic operations it performs and how many bytes it must move at minimum
-(every operand read once, every output written once). Real traffic is higher;
-Lab 1 shows by how much once the on-chip buffer is finite.
+(every operand read once, every output written once). Real traffic is higher,
+and Lab 1 shows by how much once the on-chip buffer is finite.
 
 Conventions
 -----------
-* A GEMM has shape (M, K, N): an (M x K) matrix times a (K x N) matrix.
+* A GEMM has shape (M, K, N), an (M x K) matrix times a (K x N) matrix.
   One multiply-accumulate (MAC) counts as 2 operations.
 * ``count`` replicates an operator, e.g. one attention GEMM per head.
 * Element-wise and row-wise operators have shape (rows, cols).
@@ -19,7 +19,7 @@ from dataclasses import dataclass
 
 # Primitive operations per element for the non-linear and element-wise ops,
 # using the textbook formulations (see archsim.nonlinear for the code).
-# exp, tanh, div and rsqrt are counted as one operation each here; their real
+# exp, tanh, div and rsqrt are counted as one operation each here. Their real
 # cost is much higher and is handled in archsim.energy.
 ELEMENTWISE_OPS = {
     # max-compare, subtract max, exp, running sum, divide
@@ -80,7 +80,7 @@ class Op:
         return sum(self.primitive_ops().values())
 
     def bytes(self, bits: int = 8) -> int:
-        """Minimum memory traffic in bytes: each operand read once, output written once."""
+        """Minimum memory traffic in bytes, with each operand read once and the output written once."""
         b = bits / 8
         if self.is_gemm:
             m, k, n = self.shape

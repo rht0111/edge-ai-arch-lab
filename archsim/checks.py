@@ -61,12 +61,12 @@ def _short(v, n: int = 90) -> str:
 
 
 def run(name: str, fn) -> list:
-    """Run ``fn`` on every input case of task ``name``; returns JSON-able results."""
+    """Run ``fn`` on every input case of task ``name`` and return JSON-able results."""
     return _jsonable(_ADAPTERS[name](fn))
 
 
 class Result:
-    """Truthy when the check passed; shows nothing when it is a cell's last value."""
+    """Truthy when the check passed. Shows nothing when it is a cell's last value."""
 
     def __init__(self, ok: bool):
         self.ok = ok
@@ -84,30 +84,30 @@ class Result:
 def check(name: str, fn, verbose: bool = True) -> Result:
     expected = json.loads(EXPECTED.read_text())
     if name not in expected:
-        raise KeyError(f"unknown check {name!r}; known: {sorted(expected)}")
+        raise KeyError(f"unknown check {name!r}, known checks are {sorted(expected)}")
     entry = expected[name]
     try:
         got = run(name, fn)
     except NotImplementedError:
         if verbose:
-            print(f"{name}: not implemented yet")
+            print(f"{name}  not implemented yet")
         return Result(False)
     except Exception as exc:  # report, do not crash the notebook
         if verbose:
-            print(f"{name}: FAIL, your function raised {type(exc).__name__}: {exc}")
+            print(f"{name}  FAIL, your function raised {type(exc).__name__} ({exc})")
         return Result(False)
     for i, (case, g, e) in enumerate(zip(entry["cases"], got, entry["values"])):
         if not _close(g, e, entry.get("rtol", _RTOL)):
             if verbose:
-                print(f"{name}: FAIL on case {i} {case}\n  expected {_short(e)}\n  got      {_short(g)}")
+                print(f"{name}  FAIL on case {i} {case}\n  expected {_short(e)}\n  got      {_short(g)}")
             return Result(False)
     if verbose:
-        print(f"{name}: PASS ({len(got)} cases)")
+        print(f"{name}  PASS ({len(got)} cases)")
     return Result(True)
 
 
 # --- input cases for each task --------------------------------------------------
-# Each adapter returns a list of results; CASES describes the inputs in messages.
+# Each adapter returns a list of results. CASES describes the inputs in messages.
 
 CASES = {
     "lab0.gemm": [(197, 192, 576, 8), (64, 64, 64, 16), (1, 768, 192, 8), (197, 64, 197, 4)],

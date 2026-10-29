@@ -18,7 +18,7 @@ def test_vit_tiny_block_shapes_and_macs():
 
 
 def test_vit_tiny_weight_count():
-    # 12 * D^2 per block; 12 blocks give ~5.3 M GEMM weights (ViT-Tiny has 5.7 M in total)
+    # 12 * D^2 per block, so 12 blocks give ~5.3 M GEMM weights (ViT-Tiny has 5.7 M in total)
     assert workloads.weight_count(workloads.vit_block()) == 12 * 192 * 192
 
 
@@ -61,7 +61,7 @@ def test_horowitz_points():
 
 
 def test_energy_ordering():
-    # the point of the table: DRAM >> SRAM >> arithmetic
+    # the point of the table is DRAM >> SRAM >> arithmetic
     assert energy.dram_energy(1) > 10 * energy.sram_energy(1, 256 * 1024)
     assert energy.sram_energy(1, 64 * 1024) > energy.mac_energy(8)
     assert energy.op_energy("exp") > 5 * energy.op_energy("fmul", 32)

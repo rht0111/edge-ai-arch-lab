@@ -25,7 +25,7 @@ def non_dominated(points):
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("folder", type=Path)
-    p.add_argument("-o", "--output", help="image file (default: FOLDER/class_pareto.png)")
+    p.add_argument("-o", "--output", help="image file, FOLDER/class_pareto.png by default")
     p.add_argument("--show", action="store_true", help="open a window (for the projector)")
     args = p.parse_args()
     args.output = args.output or str(args.folder / "class_pareto.png")
@@ -37,7 +37,7 @@ def main() -> None:
         try:
             subs.append(design.load_submission(f))
         except Exception as exc:
-            print(f"skipping {f.name}: {type(exc).__name__}: {exc}")
+            print(f"skipping {f.name} ({type(exc).__name__}, {exc})")
     if not subs:
         raise SystemExit(f"no valid submissions in {args.folder}")
 
@@ -50,7 +50,7 @@ def main() -> None:
               f"{m['area_mm2']:>10.3f}{m['fps_at_1mw']:>9.3f}  {d}")
     for s in subs:
         if not s["metrics"]["within_budget"]:
-            print(f"over budget: {s['team']} ({s['metrics']['area_mm2']:.3f} mm2)")
+            print(f"over budget, {s['team']} ({s['metrics']['area_mm2']:.3f} mm2)")
 
     pts = [(s["metrics"]["area_mm2"], s["metrics"]["energy_uj"]) for s in ok]
     front = sorted(non_dominated(pts), key=lambda i: pts[i][0])
@@ -59,13 +59,13 @@ def main() -> None:
         m = s["metrics"]
         good = m["within_budget"]
         ax.plot(m["area_mm2"], m["energy_uj"], "o", ms=8,
-                color="tab:blue" if good else "0.7", alpha=0.9)
-        ax.annotate(f"{s['team']}: {m['energy_uj']:.0f} uJ, {m['latency_ms']:.0f} ms, {m['area_mm2']:.2f} mm2",
+                color="C0" if good else "0.7", alpha=0.9)
+        ax.annotate(f"{s['team']} ({m['energy_uj']:.0f} uJ, {m['latency_ms']:.0f} ms, {m['area_mm2']:.2f} mm2)",
                     (m["area_mm2"], m["energy_uj"]), xytext=(5, 4),
                     textcoords="offset points", fontsize=9, color="black" if good else "0.5")
     if front:
         ax.plot([pts[i][0] for i in front], [pts[i][1] for i in front], "r-", lw=1.5, label="class Pareto front")
-    ax.axvline(design.AREA_BUDGET_MM2, color="k", ls=":", label="area budget")
+    ax.axvline(design.AREA_BUDGET_MM2, color="k", ls="dotted", label="area budget")
     ax.set_yscale("log")
     ax.set_xlabel("area (mm2, 45 nm, illustrative)")
     ax.set_ylabel("energy per ViT-Tiny inference (uJ)")

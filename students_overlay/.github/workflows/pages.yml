@@ -1,0 +1,50 @@
+name: pages
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install archsim and the site tooling
+        run: pip install ".[docs]"
+      - name: Wheels served to the in-browser Python
+        run: |
+          python -m build --wheel --outdir lite/pypi .
+          pip download --no-deps --only-binary :all: --dest lite/pypi ipywidgets jupyterlab_widgets
+      - name: Course site
+        run: mkdocs build --strict
+      - name: JupyterLite
+        run: >
+          jupyter lite build --lite-dir lite
+          --contents "$GITHUB_WORKSPACE/labs"
+          --output-dir "$GITHUB_WORKSPACE/site/lite"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
