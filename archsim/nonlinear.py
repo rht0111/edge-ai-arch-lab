@@ -83,7 +83,7 @@ def layernorm(x, gamma=1.0, beta=0.0, eps: float = 1e-5, ops: OpCounter | None =
 # --- classic float approximations of GELU -----------------------------------
 
 def gelu_tanh(x, ops: OpCounter | None = None):
-    """Hendrycks and Gimpel's tanh form (used by BERT and GPT-2)."""
+    """Hendrycks and Gimpel's tanh form (used by BERT)."""
     ops = _ops(ops)
     x = np.asarray(x, float)
     ops.add("mul", 6 * x.size); ops.add("add", 2 * x.size); ops.add("tanh", x.size)

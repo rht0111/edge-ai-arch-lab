@@ -21,19 +21,10 @@ site/
 _output/
 lite/pypi/
 
-# Editor and assistant tool files (never committed)
+# Editors
 .vscode/
 .idea/
 .DS_Store
-[Cc][Ll][Aa][Uu][Dd][Ee].md
-[Cc][Ll][Aa][Uu][Dd][Ee].local.md
-.[Cc]laude/
-AGENTS.md
-.cursor/
-.cursorrules
-*.prompt
-*.prompt.md
-prompts/
-notes/
-session-notes*
+
+# Local check output (scripts/check_all.sh)
 _check/
