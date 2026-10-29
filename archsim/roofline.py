@@ -37,7 +37,7 @@ def accelerator(rows: int = 16, cols: int = 16, freq_hz: float = 50e6,
     return Machine(name or f"{rows}x{cols} @ {freq_hz / 1e6:g} MHz", peak, bandwidth)
 
 
-# The toy edge accelerator used in the labs: 256 MACs at 50 MHz behind a
+# The toy edge accelerator used in the labs has 256 MACs at 50 MHz behind a
 # narrow LPDDR interface. Peak 25.6 GOP/s, ridge at 64 ops/byte.
 EDGE_NPU = accelerator(16, 16, 50e6, 0.4e9, name="edge NPU (16x16 @ 50 MHz, 0.4 GB/s)")
 
@@ -61,7 +61,7 @@ def plot(machine: Machine, points=(), ax=None, imin: float = 0.5, imax: float = 
     i_txt = imin * 2
     ax.text(i_txt, machine.bandwidth * i_txt / 1e9 * 1.25,
             f"DRAM {machine.bandwidth / 1e9:g} GB/s", rotation=0, fontsize=9, va="bottom")
-    ax.axvline(machine.ridge, color="grey", ls=":", lw=1)
+    ax.axvline(machine.ridge, color="grey", ls="dotted", lw=1)
     ax.text(machine.ridge * 1.08, peak * 0.012, f"ridge\n{machine.ridge:.0f} op/B",
             color="grey", fontsize=8, va="bottom")
     markers = "osD^v<>pPhX*"
@@ -69,7 +69,7 @@ def plot(machine: Machine, points=(), ax=None, imin: float = 0.5, imax: float = 
         label, inten = p[0], p[1]
         perf = p[2] if len(p) > 2 else float(machine.attainable(inten))
         ax.plot(inten, perf / 1e9, markers[i % len(markers)], ms=8, alpha=0.85,
-                label=f"{label}: {inten:.1f} op/B, {perf / 1e9:.1f} GOP/s ({machine.bound(inten)})")
+                label=f"{label} ({inten:.1f} op/B, {perf / 1e9:.1f} GOP/s, {machine.bound(inten)}-bound)")
     ax.set_xlabel("arithmetic intensity (ops / DRAM byte)")
     ax.set_ylabel("attainable performance (GOP/s)")
     ax.set_ylim(top=peak * 3)

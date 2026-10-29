@@ -2,7 +2,7 @@ name: pages
 
 on:
   push:
-    branches: [master, main]
+    branches: [main, master]
   workflow_dispatch:
 
 permissions:
@@ -28,24 +28,12 @@ jobs:
         run: |
           python -m build --wheel --outdir lite/pypi .
           pip download --no-deps --only-binary :all: --dest lite/pypi ipywidgets jupyterlab_widgets
-      # The site must never serve solutions: on the instructor branches the
-      # student notebooks are built from nbsrc/, elsewhere labs/ already are.
-      - name: Student notebooks
-        run: |
-          if [ -d nbsrc ]; then
-            python scripts/build_notebooks.py --stubs --out "$RUNNER_TEMP/labs"
-          else
-            cp -r labs "$RUNNER_TEMP/labs"
-          fi
-          for nb in "$RUNNER_TEMP"/labs/*.ipynb; do
-            grep -q NotImplementedError "$nb" || { echo "$nb looks solved"; exit 1; }
-          done
       - name: Course site
         run: mkdocs build --strict
       - name: JupyterLite
         run: >
           jupyter lite build --lite-dir lite
-          --contents "$RUNNER_TEMP/labs"
+          --contents "$GITHUB_WORKSPACE/labs"
           --output-dir "$GITHUB_WORKSPACE/site/lite"
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -1,6 +1,6 @@
 """Design-space model of a small edge accelerator running ViT-Tiny.
 
-The chip: a square output-stationary MAC array, one on-chip SRAM buffer, a
+The chip has a square output-stationary MAC array, one on-chip SRAM buffer, a
 small 4-lane SIMD host core for everything the array cannot do, optional
 softmax and GELU units with a chosen number of lanes, and a narrow DRAM link.
 
@@ -8,14 +8,14 @@ Modelling choices (all deliberate simplifications, stated so they can be
 argued with):
 
 * GEMM cycles come from archsim.systolic (OS dataflow, tiles do not overlap).
-* Within an operator, DRAM transfers overlap with compute: an operator takes
+* Within an operator, DRAM transfers overlap with compute, so an operator takes
   max(compute cycles, DRAM cycles). Operators run one after the other.
-* GEMM tiling is a simple heuristic (see _gemm_dram_bytes); Lab 1 shows that
+* GEMM tiling is a simple heuristic (see _gemm_dram_bytes). Lab 1 shows that
   a proper search does better.
 * An element-wise operator whose input fits in half the buffer is fused with
   its producer and costs no DRAM traffic.
-* Weights are always streamed from DRAM: 5.3 MB of ViT-Tiny weights do not fit
-  in any buffer this area budget allows.
+* Weights are always streamed from DRAM, because the 5.3 MB of ViT-Tiny
+  weights do not fit in any buffer this area budget allows.
 * Accuracy is not modelled. 4-bit designs are flagged, not penalised.
 """
 
@@ -51,8 +51,8 @@ _HOST_CYCLES = {op: nm + na for op, (nm, na) in energy.COMPLEX_AS_FP32.items()}
 class Design:
     array: int = 16            # the MAC array is array x array PEs
     buffer_kib: int = 128
-    bits: int = 8              # weight and activation precision: 4, 8 or 16
-    softmax_lanes: int = 0     # 0 means no softmax unit; softmax runs on the host
+    bits: int = 8              # weight and activation precision, 4, 8 or 16
+    softmax_lanes: int = 0     # 0 means no softmax unit, softmax then runs on the host
     gelu_lanes: int = 0
 
     def validate(self) -> None:
@@ -98,10 +98,10 @@ def area_breakdown(d: Design) -> dict:
 
 
 def _gemm_dram_bytes(M: int, K: int, N: int, b: float, buf: float) -> float:
-    """Heuristic tiling, not a search: the cheapest of three simple schedules.
+    """Heuristic tiling, not a search. It takes the cheapest of these simple schedules.
 
-    1. One operand fits in half the buffer: keep it, stream the other once.
-    2. Otherwise: T x T output tiles with full-K panels of A and B on chip,
+    1. One operand fits in half the buffer. Keep it and stream the other once.
+    2. Otherwise use T x T output tiles with full-K panels of A and B on chip,
        T the largest power of two that fits.
     """
     once = b * (M * K + K * N + M * N)
@@ -172,7 +172,7 @@ def evaluate(d: Design, seq: int = VIT_TINY["seq"], depth: int = VIT_TINY["depth
         power_mw=power_mw, fps=fps, within_budget=area_total <= AREA_BUDGET_MM2,
         fps_at_1mw=_fps_at_budget(energy_uj, leak_mw, latency_s),
         energy_breakdown_uj=e, cycles_breakdown=cyc, area_breakdown_mm2=area,
-        notes=["4-bit: check accuracy before trusting this point"] if d.bits == 4 else [],
+        notes=["4-bit design, check accuracy before trusting this point"] if d.bits == 4 else [],
     )
 
 

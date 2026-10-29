@@ -12,7 +12,7 @@ def _fmt(v) -> str:
 
 
 def draw_frame(res: TileResult, t: int, ax=None, dataflow: str = "os"):
-    """Draw the array at cycle ``t``: active PEs shaded, operands and accumulators printed."""
+    """Draw the array at cycle ``t``, with active PEs shaded and operands and accumulators printed."""
     import matplotlib.pyplot as plt
 
     f = res.frames[t]
@@ -24,7 +24,7 @@ def draw_frame(res: TileResult, t: int, ax=None, dataflow: str = "os"):
         for c in range(cols):
             y = rows - 1 - r
             busy = f["active"][r, c]
-            ax.add_patch(plt.Rectangle((c, y), 0.94, 0.94, color="tab:orange" if busy else "0.92"))
+            ax.add_patch(plt.Rectangle((c, y), 0.94, 0.94, color="C1" if busy else "0.92"))
             if dataflow == "os":
                 top = f"a={_fmt(f['a'][r, c])}  b={_fmt(f['b'][r, c])}"
                 bottom = f"acc={f['acc'][r, c]:g}"
@@ -35,8 +35,11 @@ def draw_frame(res: TileResult, t: int, ax=None, dataflow: str = "os"):
             ax.text(c + 0.47, y + 0.25, bottom, ha="center", fontsize=8, weight="bold")
     busy = int(f["active"].sum())
     phase = f" ({f['phase']})" if "phase" in f else ""
-    ax.set_title(f"cycle {t + 1}/{res.cycles}: {busy}/{rows * cols} PEs busy{phase}")
-    ax.set_xlim(-0.1, cols); ax.set_ylim(-0.1, rows); ax.set_aspect("equal"); ax.axis("off")
+    ax.set_title(f"cycle {t + 1} of {res.cycles}, {busy} of {rows * cols} PEs busy{phase}")
+    ax.set_xlim(-0.1, cols)
+    ax.set_ylim(-0.1, rows)
+    ax.set_aspect("equal")
+    ax.axis("off")
     return ax
 
 
@@ -59,7 +62,7 @@ def array_widget(res: TileResult, dataflow: str = "os"):
 
 
 def busy_plot(res: TileResult, ax=None):
-    """Number of busy PEs per cycle: fill, steady state, drain."""
+    """Number of busy PEs per cycle, showing fill, steady state and drain."""
     import matplotlib.pyplot as plt
 
     if ax is None:
@@ -67,11 +70,12 @@ def busy_plot(res: TileResult, ax=None):
     rows, cols = res.frames[0]["active"].shape
     busy = [int(f["active"].sum()) for f in res.frames]
     ax.step(range(1, len(busy) + 1), busy, where="mid")
-    if len(busy) <= 40:                   # small tiles: write each count on its step
+    if len(busy) <= 40:                   # small tiles get each count written on its step
         for t, b in enumerate(busy, 1):
             ax.annotate(str(b), (t, b), xytext=(0, 4), textcoords="offset points", ha="center", fontsize=8)
-    ax.axhline(rows * cols, color="grey", ls=":")
+    ax.axhline(rows * cols, color="grey", ls="dotted")
     ax.text(1, rows * cols, f"all {rows * cols} PEs", va="bottom", fontsize=8, color="grey")
     ax.set_ylim(0, rows * cols * 1.2)
-    ax.set_xlabel("cycle"); ax.set_ylabel("busy PEs")
+    ax.set_xlabel("cycle")
+    ax.set_ylabel("busy PEs")
     return ax

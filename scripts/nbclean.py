@@ -1,8 +1,8 @@
-"""Git clean filter for notebooks: drop outputs, execution counts and UI metadata.
+"""Git clean filter that drops outputs, execution counts and UI metadata from notebooks.
 
 Running a notebook rewrites it with outputs and execution counts. With this
 filter, git compares and commits only what was written in the cells, so a
-notebook that was merely run shows as unmodified. Enable it once per clone:
+notebook that was merely run shows as unmodified. Enable it once per clone.
 
     git config filter.nbclean.clean "python3 scripts/nbclean.py"
 
@@ -42,7 +42,7 @@ def main() -> None:
     raw = sys.stdin.read()
     try:
         nb = json.loads(raw)
-    except ValueError:            # not a notebook we understand: pass it through untouched
+    except ValueError:            # not a notebook we understand, so pass it through untouched
         sys.stdout.write(raw)
         return
     sys.stdout.write(json.dumps(clean(nb), sort_keys=True, indent=1, ensure_ascii=False) + "\n")

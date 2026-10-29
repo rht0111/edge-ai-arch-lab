@@ -1,10 +1,10 @@
-"""Softmax, GELU and LayerNorm: exact references, published approximations,
+"""Softmax, GELU and LayerNorm, with exact references, published approximations,
 and an operation counter so that accuracy can be traded against cost.
 
-The integer-friendly approximations follow I-BERT (Kim et al., ICML 2021):
-second-order polynomials after a range reduction, so that exp and erf need
+The integer-friendly approximations follow I-BERT (Kim et al., ICML 2021),
+with second-order polynomials after a range reduction, so that exp and erf need
 only multiplies, adds and shifts. They are written in floating point here for
-readability; the operation counts are those of the integer version.
+readability. The operation counts are those of the integer version.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ LN2 = math.log(2.0)
 
 
 class OpCounter:
-    """Counts primitive operations: ``ops.add("mul", n)``."""
+    """Counts primitive operations, as in ``ops.add("mul", n)``."""
 
     def __init__(self):
         self.counts = Counter()
@@ -48,14 +48,18 @@ def _ops(ops):
 # --- exact references ------------------------------------------------------
 
 def softmax(x, axis: int = -1, ops: OpCounter | None = None):
-    """Numerically stable softmax: exp(x - max) / sum."""
+    """Numerically stable softmax, exp(x - max) / sum."""
     ops = _ops(ops)
     x = np.asarray(x, float)
     z = x - x.max(axis=axis, keepdims=True)
     e = np.exp(z)
     out = e / e.sum(axis=axis, keepdims=True)
     n = x.size
-    ops.add("cmp", n); ops.add("add", n); ops.add("exp", n); ops.add("add", n); ops.add("div", n)
+    ops.add("cmp", n)
+    ops.add("add", n)
+    ops.add("exp", n)
+    ops.add("add", n)
+    ops.add("div", n)
     return out
 
 
@@ -66,7 +70,10 @@ def gelu(x, ops: OpCounter | None = None):
     """Exact GELU, x * Phi(x), using the error function."""
     ops = _ops(ops)
     x = np.asarray(x, float)
-    ops.add("mul", 3 * x.size); ops.add("add", x.size); ops.add("exp", x.size)  # erf ~ exp cost
+    # erf costs about as much as exp
+    ops.add("mul", 3 * x.size)
+    ops.add("add", x.size)
+    ops.add("exp", x.size)
     return 0.5 * x * (1.0 + _erf(x / math.sqrt(2.0)))
 
 
@@ -76,7 +83,9 @@ def layernorm(x, gamma=1.0, beta=0.0, eps: float = 1e-5, ops: OpCounter | None =
     mu = x.mean(axis=-1, keepdims=True)
     var = ((x - mu) ** 2).mean(axis=-1, keepdims=True)
     n, rows = x.size, x.size // x.shape[-1]
-    ops.add("add", 4 * n); ops.add("mul", 3 * n); ops.add("rsqrt", rows)
+    ops.add("add", 4 * n)
+    ops.add("mul", 3 * n)
+    ops.add("rsqrt", rows)
     return (x - mu) / np.sqrt(var + eps) * gamma + beta
 
 
@@ -86,7 +95,9 @@ def gelu_tanh(x, ops: OpCounter | None = None):
     """Hendrycks and Gimpel's tanh form (used by BERT)."""
     ops = _ops(ops)
     x = np.asarray(x, float)
-    ops.add("mul", 6 * x.size); ops.add("add", 2 * x.size); ops.add("tanh", x.size)
+    ops.add("mul", 6 * x.size)
+    ops.add("add", 2 * x.size)
+    ops.add("tanh", x.size)
     return 0.5 * x * (1.0 + np.tanh(math.sqrt(2.0 / math.pi) * (x + 0.044715 * x ** 3)))
 
 
@@ -94,14 +105,17 @@ def gelu_sigmoid(x, ops: OpCounter | None = None):
     """x * sigmoid(1.702 x), from the same paper."""
     ops = _ops(ops)
     x = np.asarray(x, float)
-    ops.add("mul", 2 * x.size); ops.add("add", x.size); ops.add("exp", x.size); ops.add("div", x.size)
+    ops.add("mul", 2 * x.size)
+    ops.add("add", x.size)
+    ops.add("exp", x.size)
+    ops.add("div", x.size)
     return x / (1.0 + np.exp(-1.702 * x))
 
 
 # --- I-BERT polynomial approximations -------------------------------------
 
 def exp_ibert(x, ops: OpCounter | None = None):
-    """exp(x) for x <= 0: x = -z ln2 + p, exp(p) ~ 0.3585 (p + 1.353)^2 + 0.344,
+    """exp(x) for x <= 0. Write x = -z ln2 + p, use exp(p) ~ 0.3585 (p + 1.353)^2 + 0.344,
     then a right shift by z."""
     ops = _ops(ops)
     x = np.minimum(np.asarray(x, float), 0.0)
@@ -109,7 +123,10 @@ def exp_ibert(x, ops: OpCounter | None = None):
     p = x + z * LN2
     poly = 0.3585 * (p + 1.353) ** 2 + 0.344
     n = x.size
-    ops.add("mul", 3 * n); ops.add("floor", n); ops.add("add", 3 * n); ops.add("shift", n)
+    ops.add("mul", 3 * n)
+    ops.add("floor", n)
+    ops.add("add", 3 * n)
+    ops.add("shift", n)
     return poly * 2.0 ** (-z)
 
 
@@ -121,7 +138,10 @@ def softmax_ibert(x, axis: int = -1, ops: OpCounter | None = None):
     s = e.sum(axis=axis, keepdims=True)
     n, rows = x.size, x.size // x.shape[axis]
     # one reciprocal per row, then a multiply per element
-    ops.add("cmp", n); ops.add("add", 2 * n); ops.add("div", rows); ops.add("mul", n)
+    ops.add("cmp", n)
+    ops.add("add", 2 * n)
+    ops.add("div", rows)
+    ops.add("mul", n)
     return e / s
 
 
@@ -133,7 +153,9 @@ def gelu_ibert(x, ops: OpCounter | None = None):
     u = np.abs(x / math.sqrt(2.0))
     erf = np.sign(x) * (a * (np.minimum(u, -b) + b) ** 2 + 1.0)
     n = x.size
-    ops.add("mul", 5 * n); ops.add("add", 3 * n); ops.add("cmp", 2 * n)
+    ops.add("mul", 5 * n)
+    ops.add("add", 3 * n)
+    ops.add("cmp", 2 * n)
     return 0.5 * x * (1.0 + erf)
 
 

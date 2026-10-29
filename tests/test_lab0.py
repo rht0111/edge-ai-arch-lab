@@ -1,4 +1,4 @@
-"""Checks for Lab 0. Run with: pytest tests/test_lab0.py"""
+"""Checks for Lab 0. Run them with ``pytest tests/test_lab0.py``."""
 
 import pytest
 
