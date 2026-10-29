@@ -43,3 +43,13 @@ def test_trace_frames():
     r = systolic.simulate_os_tile(np.ones((4, 3)), np.ones((3, 4)), trace=True)
     assert len(r.frames) == r.cycles
     assert sum(f["active"].sum() for f in r.frames) == r.macs
+
+
+def test_ws_trace_covers_every_cycle_including_weight_loading():
+    from archsim import viz
+    r = systolic.simulate_ws_tile(np.ones((6, 3)), np.ones((3, 4)), 4, 4, trace=True)
+    assert len(r.frames) == r.cycles
+    assert [f.get("phase") for f in r.frames[:3]] == ["loading weights"] * 3
+    assert sum(f["active"].sum() for f in r.frames) == r.macs
+    for t in range(r.cycles):           # every slider position must draw
+        viz.draw_frame(r, t, dataflow="ws")

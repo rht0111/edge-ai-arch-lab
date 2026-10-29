@@ -1,6 +1,6 @@
 """Draw the class Pareto plot from a folder of Lab 4 submissions.
 
-    python scripts/collect_pareto.py submissions/ -o class_pareto.png
+    python scripts/collect_pareto.py submissions/            # writes submissions/class_pareto.png
 
 Every metric is recomputed from the design in each file, so edited numbers in
 a submission have no effect. Files that do not parse are reported and skipped.
@@ -25,9 +25,10 @@ def non_dominated(points):
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("folder", type=Path)
-    p.add_argument("-o", "--output", default="class_pareto.png")
+    p.add_argument("-o", "--output", help="image file (default: FOLDER/class_pareto.png)")
     p.add_argument("--show", action="store_true", help="open a window (for the projector)")
     args = p.parse_args()
+    args.output = args.output or str(args.folder / "class_pareto.png")
     if not args.show:
         matplotlib.use("Agg")
 
@@ -59,7 +60,8 @@ def main() -> None:
         good = m["within_budget"]
         ax.plot(m["area_mm2"], m["energy_uj"], "o", ms=8,
                 color="tab:blue" if good else "0.7", alpha=0.9)
-        ax.annotate(s["team"], (m["area_mm2"], m["energy_uj"]), xytext=(5, 4),
+        ax.annotate(f"{s['team']}: {m['energy_uj']:.0f} uJ, {m['latency_ms']:.0f} ms, {m['area_mm2']:.2f} mm2",
+                    (m["area_mm2"], m["energy_uj"]), xytext=(5, 4),
                     textcoords="offset points", fontsize=9, color="black" if good else "0.5")
     if front:
         ax.plot([pts[i][0] for i in front], [pts[i][1] for i in front], "r-", lw=1.5, label="class Pareto front")

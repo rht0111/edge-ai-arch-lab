@@ -53,7 +53,10 @@ once the reference has been checked against the original.
   estimation methodology for accelerator designs", *ICCAD* 2019.
 - [ ] H. Genc et al., "Gemmini: enabling systematic deep-learning architecture
   evaluation via full-stack integration", *DAC* 2021.
-- [ ] NX-CGRA, *DATE* 2026. Full author list, title and pages to be completed.
+- [x] R. Prasad, "NX-CGRA: a programmable hardware accelerator for core
+  Transformer algorithms on edge devices", *Design, Automation & Test in Europe
+  Conference (DATE)*, Verona, Italy, 2026, pp. 1-7,
+  doi: [10.23919/DATE69613.2026.11539188](https://doi.org/10.23919/DATE69613.2026.11539188).
 
 ## Courses (Going further)
 

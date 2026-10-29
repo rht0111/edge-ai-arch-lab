@@ -16,8 +16,9 @@ when its simplifications start to matter.
 ## Reconfigurable arrays
 
 The toy CGRA of Lab 3 hints at a middle ground between fixed-function units
-and programmable cores. NX-CGRA (DATE 2026) is a recent published example of a
-CGRA targeting such kernels at the edge.
+and programmable cores. NX-CGRA (R. Prasad, DATE 2026) is a recent example:
+a programmable hardware accelerator for the core Transformer algorithms on
+edge devices.
 
 ## Courses
 

@@ -29,12 +29,13 @@ def draw_frame(res: TileResult, t: int, ax=None, dataflow: str = "os"):
                 top = f"a={_fmt(f['a'][r, c])}  b={_fmt(f['b'][r, c])}"
                 bottom = f"acc={f['acc'][r, c]:g}"
             else:
-                top = f"x={_fmt(f['x'][r, c])}  w={f['w'][r, c]:g}"
+                top = f"x={_fmt(f['x'][r, c])}  w={_fmt(f['w'][r, c])}"
                 bottom = f"psum={f['psum'][r, c]:g}"
             ax.text(c + 0.47, y + 0.62, top, ha="center", fontsize=7)
             ax.text(c + 0.47, y + 0.25, bottom, ha="center", fontsize=8, weight="bold")
     busy = int(f["active"].sum())
-    ax.set_title(f"cycle {t + 1}/{res.cycles}: {busy}/{rows * cols} PEs busy")
+    phase = f" ({f['phase']})" if "phase" in f else ""
+    ax.set_title(f"cycle {t + 1}/{res.cycles}: {busy}/{rows * cols} PEs busy{phase}")
     ax.set_xlim(-0.1, cols); ax.set_ylim(-0.1, rows); ax.set_aspect("equal"); ax.axis("off")
     return ax
 
@@ -44,8 +45,9 @@ def array_widget(res: TileResult, dataflow: str = "os"):
     import ipywidgets as w
     import matplotlib.pyplot as plt
 
-    play = w.Play(min=0, max=res.cycles - 1, interval=600)
-    slider = w.IntSlider(min=0, max=res.cycles - 1, description="cycle")
+    last = len(res.frames) - 1
+    play = w.Play(min=0, max=last, interval=600)
+    slider = w.IntSlider(min=0, max=last, description="cycle")
     w.jslink((play, "value"), (slider, "value"))
 
     def show(t):
@@ -63,7 +65,13 @@ def busy_plot(res: TileResult, ax=None):
     if ax is None:
         _, ax = plt.subplots(figsize=(6, 2.5))
     rows, cols = res.frames[0]["active"].shape
-    ax.step(range(1, res.cycles + 1), [f["active"].sum() for f in res.frames], where="mid")
+    busy = [int(f["active"].sum()) for f in res.frames]
+    ax.step(range(1, len(busy) + 1), busy, where="mid")
+    if len(busy) <= 40:                   # small tiles: write each count on its step
+        for t, b in enumerate(busy, 1):
+            ax.annotate(str(b), (t, b), xytext=(0, 4), textcoords="offset points", ha="center", fontsize=8)
     ax.axhline(rows * cols, color="grey", ls=":")
+    ax.text(1, rows * cols, f"all {rows * cols} PEs", va="bottom", fontsize=8, color="grey")
+    ax.set_ylim(0, rows * cols * 1.2)
     ax.set_xlabel("cycle"); ax.set_ylabel("busy PEs")
     return ax

@@ -191,6 +191,19 @@ the setup cell does nothing, which is normal.
 **Keep the terminal open while you work.** To stop JupyterLab, save your
 notebooks, then press Ctrl + C twice in the terminal.
 
+### Keeping your clone clean (if you use git)
+
+Running a notebook saves its outputs into the `.ipynb` file. Tell git, once
+per clone, to ignore outputs and keep only what you wrote in the cells:
+
+```bash
+git config filter.nbclean.clean "python3 scripts/nbclean.py"
+```
+
+After that, `git diff` shows only your real edits. `git status` may still
+list a notebook you merely ran; `git add labs` refreshes it (nothing is
+staged), and `git restore labs` throws away your outputs and edits.
+
 ### Step 5 (optional): check your answers from the terminal
 
 In a second terminal (activate the environment again first):

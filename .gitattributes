@@ -1,0 +1,2 @@
+# Notebooks are stored without outputs; see scripts/nbclean.py
+*.ipynb filter=nbclean
