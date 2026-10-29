@@ -99,6 +99,12 @@ def simulate_ws_tile(A, W, rows: int = 4, cols: int = 4, trace: bool = False) ->
     psum = np.zeros((rows, cols))
     out = np.zeros((M, n))
     frames, macs, last = [], 0, -1
+    if trace:                              # weights enter at the top and shift down one row per cycle
+        for i in range(load):
+            wv = np.full((rows, cols), np.nan)
+            wv[:i + 1, :n] = W[k - 1 - i:, :]
+            frames.append(dict(x=np.full((rows, cols), np.nan), w=wv, psum=np.zeros((rows, cols)),
+                               active=np.zeros((rows, cols), bool), phase="loading weights"))
     for t in range(steps):
         x[:, 1:], vx[:, 1:], tok[:, 1:] = x[:, :-1].copy(), vx[:, :-1].copy(), tok[:, :-1].copy()
         x[:, 0], vx[:, 0], tok[:, 0] = x_in[:, t], x_ok[:, t], tok_in[:, t]
@@ -115,7 +121,7 @@ def simulate_ws_tile(A, W, rows: int = 4, cols: int = 4, trace: bool = False) ->
             frames.append(dict(x=np.where(vx, x, np.nan), w=w.copy(),
                                psum=psum.copy(), active=active.copy()))
     return TileResult(out, cycles=load + last + 1, macs=macs, load_cycles=load,
-                      frames=frames[:last + 1])
+                      frames=frames[:load + last + 1] if trace else [])
 
 
 def os_tile_cycles(m: int, k: int, n: int) -> int:

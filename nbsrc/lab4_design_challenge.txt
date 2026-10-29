@@ -32,6 +32,7 @@ import itertools
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.ticker import NullFormatter, ScalarFormatter
 
 from archsim import design
 from archsim.design import Design, evaluate
@@ -43,6 +44,15 @@ from archsim.checks import check
 docstring of `archsim.design` for what the model assumes; you are allowed to
 disagree with it in your reflection.
 #%% code
+def plain_log_ticks(ax, xticks=(0.2, 0.3, 0.5, 0.7, 1, 1.5, 2, 3),
+                    yticks=(2000, 3000, 5000, 10000, 20000, 50000)):
+    """Log axes with plain numbers instead of 3x10^-1 style labels."""
+    for axis, ticks in ((ax.xaxis, xticks), (ax.yaxis, yticks)):
+        axis.set_major_formatter(ScalarFormatter())
+        axis.set_minor_formatter(NullFormatter())
+        axis.set_ticks(ticks)
+
+
 def report(d, ax=None):
     m = evaluate(d)
     print(d)
@@ -51,11 +61,17 @@ def report(d, ax=None):
           f"{m['fps_at_1mw']:.3f} fps at 1 mW")
     if m["notes"]:
         print("  note:", *m["notes"])
-    fig, axes = plt.subplots(1, 3, figsize=(12, 2.6))
-    for ax, key, unit in zip(axes, ("energy_breakdown_uj", "cycles_breakdown", "area_breakdown_mm2"),
-                             ("uJ", "cycles", "mm2")):
-        ax.barh(list(m[key]), list(m[key].values()))
-        ax.set_title(f"{key.split('_')[0]} ({unit})")
+    latency_ms = {k: v / design.FREQ_HZ * 1e3 for k, v in m["cycles_breakdown"].items()}
+    parts = (("energy", m["energy_breakdown_uj"], "uJ per inference", "%.0f"),
+             ("latency", latency_ms, "ms per inference", "%.1f"),
+             ("area", m["area_breakdown_mm2"], "mm2", "%.3f"))
+    fig, axes = plt.subplots(1, 3, figsize=(13, 3))
+    for ax, (title, values, unit, fmt) in zip(axes, parts):
+        bars = ax.barh(list(values), list(values.values()))
+        ax.bar_label(bars, fmt=fmt, padding=2, fontsize=8)
+        ax.set_xlim(0, max(values.values()) * 1.3)
+        ax.set_xlabel(unit)
+        ax.set_title(title)
     fig.tight_layout()
     return m
 
@@ -100,7 +116,7 @@ en = np.array([m["energy_uj"] for m in metrics])
 ok = area <= design.AREA_BUDGET_MM2
 front = pareto_front(list(zip(area, en)))
 
-fig, ax = plt.subplots(figsize=(7, 4.5))
+fig, ax = plt.subplots(figsize=(7.5, 5.5))
 ax.scatter(area[~ok], en[~ok], s=10, c="0.75", label="over area budget")
 sc = ax.scatter(area[ok], en[ok], s=14, c=[designs[i].bits for i in np.nonzero(ok)[0]], cmap="viridis", label="within budget")
 f = sorted(front, key=lambda i: area[i])
@@ -108,7 +124,12 @@ ax.plot(area[f], en[f], "r-", lw=1, label="Pareto front")
 ax.axvline(design.AREA_BUDGET_MM2, color="k", ls=":")
 ax.set_xscale("log"); ax.set_yscale("log")
 ax.set_xlabel("area (mm2)"); ax.set_ylabel("energy per inference (uJ)")
-fig.colorbar(sc, label="bits"); ax.legend(fontsize=8);
+b0 = min((i for i in range(len(designs)) if ok[i]), key=lambda i: en[i])
+ax.plot(area[b0], en[b0], "o", ms=12, mfc="none", mec="red", label="lowest energy within budget")
+ax.set_title(f"lowest energy within budget (ringed): {en[b0]:.0f} uJ at {area[b0]:.2f} mm2", fontsize=10)
+plain_log_ticks(ax)
+fig.colorbar(sc, label="bits")
+ax.legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.14), ncol=2, frameon=False);
 #%% code
 best = sorted((i for i in range(len(designs)) if ok[i]), key=lambda i: (en[i], metrics[i]["latency_ms"]))[:5]
 for i in best:
@@ -135,7 +156,10 @@ fig, ax = plt.subplots(figsize=(6, 4))
 ax.scatter(area[ok], en[ok], s=10, c="0.7")
 ax.plot(area[f], en[f], "r-", lw=1)
 ax.plot(mine["area_mm2"], mine["energy_uj"], "*", ms=16, color="tab:orange", label=TEAM)
+ax.annotate(f"{mine['energy_uj']:.0f} uJ, {mine['latency_ms']:.0f} ms, {mine['area_mm2']:.3f} mm2",
+            (mine["area_mm2"], mine["energy_uj"]), xytext=(8, 8), textcoords="offset points", fontsize=8)
 ax.set_xscale("log"); ax.set_yscale("log"); ax.legend()
+plain_log_ticks(ax)
 ax.set_xlabel("area (mm2)"); ax.set_ylabel("energy per inference (uJ)");
 #%% md
 ## 5. Submit

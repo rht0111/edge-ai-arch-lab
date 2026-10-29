@@ -92,12 +92,16 @@ def plot_breakdown(seq, ax_f, ax_b):
     rows = workloads.summary(workloads.vit_block(seq=seq))
     names = [r["name"] for r in rows]
     colors = ["tab:blue" if r["kind"] == "gemm" else "tab:red" for r in rows]
-    ax_f.barh(names, [r["flops_pct"] for r in rows], color=colors)
-    ax_b.barh(names, [r["bytes_pct"] for r in rows], color=colors)
-    ax_f.set_title(f"seq={seq}: % of FLOPs"); ax_b.set_title(f"seq={seq}: % of min. bytes")
-    ax_f.invert_yaxis(); ax_b.invert_yaxis()
+    for ax, key, what in ((ax_f, "flops_pct", "FLOPs"), (ax_b, "bytes_pct", "minimum bytes")):
+        bars = ax.barh(names, [r[key] for r in rows], color=colors)
+        ax.bar_label(bars, fmt="%.1f%%", padding=2, fontsize=8)
+        ax.set_xlim(0, max(r[key] for r in rows) * 1.25)
+        ax.set_xlabel(f"% of the block's {what}")
+        ax.set_title(f"seq={seq}: {what}")
+    ax_f.set_ylabel("operator")
+    ax_f.invert_yaxis()
 
-fig, axes = plt.subplots(2, 2, figsize=(10, 6), sharey=True)
+fig, axes = plt.subplots(2, 2, figsize=(11, 7.5), sharey=True)
 plot_breakdown(64, *axes[0])
 plot_breakdown(1024, *axes[1])
 fig.suptitle("blue: GEMM, red: element-wise / non-linear")
@@ -147,16 +151,20 @@ def cost_breakdown(ops):
 #%% code
 check("lab0.breakdown", cost_breakdown)
 #%% code
-fig, axes = plt.subplots(1, 2, figsize=(10, 3.2))
+fig, axes = plt.subplots(1, 2, figsize=(11, 3.8))
 for ax, seq in zip(axes, (197, 1024)):
     cb = cost_breakdown(workloads.vit_block(seq=seq))
     kinds = list(cb)
     f = np.array([cb[k][0] for k in kinds], float)
     e = np.array([cb[k][1] for k in kinds], float)
     x = np.arange(len(kinds))
-    ax.bar(x - 0.2, 100 * f / f.sum(), 0.4, label="% of FLOPs")
-    ax.bar(x + 0.2, 100 * e / e.sum(), 0.4, label="% of compute energy")
-    ax.set_xticks(x, kinds); ax.set_title(f"seq={seq}"); ax.legend()
+    b1 = ax.bar(x - 0.2, 100 * f / f.sum(), 0.4, label="% of FLOPs")
+    b2 = ax.bar(x + 0.2, 100 * e / e.sum(), 0.4, label="% of compute energy")
+    for b in (b1, b2):
+        ax.bar_label(b, fmt="%.1f", padding=2, fontsize=8)
+    ax.set_xticks(x, kinds); ax.set_ylim(0, 112)
+    ax.set_xlabel("operator kind"); ax.set_ylabel("share of the block (%)")
+    ax.set_title(f"seq={seq}"); ax.legend(fontsize=8)
 fig.tight_layout()
 #%% md
 ## Stretch

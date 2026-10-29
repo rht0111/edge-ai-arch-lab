@@ -155,12 +155,20 @@ compared with the energy of its MACs:
 #%% code
 mac_pj = sum(op.macs for op in block) * energy.mac_energy(8)
 kib = [8, 16, 32, 64, 128, 256]
-for seq, style in ((197, "o-"), (1024, "s--")):
+ratio = {}
+for seq in (197, 1024):
     ops = [op for op in workloads.vit_block(seq=seq) if op.is_gemm]
     macs = sum(op.macs for op in ops) * energy.mac_energy(8)
-    dram = [sum(best_tiling(*op.shape, buffer_bytes=k * 1024)[0] * op.count for op in ops)
-            * energy.dram_energy(1) / macs for k in kib]
-    plt.semilogx(kib, dram, style, base=2, label=f"seq={seq}")
+    ratio[seq] = [sum(best_tiling(*op.shape, buffer_bytes=k * 1024)[0] * op.count for op in ops)
+                  * energy.dram_energy(1) / macs for k in kib]
+plt.figure(figsize=(7, 4))
+for seq, style in ((197, "o-"), (1024, "s--")):
+    other = ratio[1024 if seq == 197 else 197]
+    plt.semilogx(kib, ratio[seq], style, base=2, label=f"seq={seq}")
+    for k, v, w in zip(kib, ratio[seq], other):   # the higher curve labels above, the lower below
+        plt.annotate(f"{v:.1f}x", (k, v), textcoords="offset points",
+                     xytext=(0, 7 if v >= w else -14), ha="center", fontsize=8)
+plt.xticks(kib, [str(k) for k in kib])
 plt.axhline(1, color="grey", ls=":")
 plt.xlabel("buffer (KiB)"); plt.ylabel("DRAM energy / MAC energy"); plt.legend()
 plt.title("GEMMs of one block, int8");

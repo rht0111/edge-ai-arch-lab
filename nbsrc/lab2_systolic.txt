@@ -67,12 +67,17 @@ shapes = {"scores 197x64x197": (197, 64, 197), "qkv 197x192x576": (197, 192, 576
 show(shapes, 4, 4)
 show(shapes, 16, 16)
 #%% code
-Ms = np.arange(1, 130)
+Ms = np.arange(1, 213)
 fig, ax = plt.subplots(figsize=(7, 3))
 for size in (8, 16, 32):
-    ax.plot(Ms, [systolic.gemm(int(M), 64, 192, size, size)["utilization"] for M in Ms], label=f"{size}x{size}")
-ax.axvline(197 - 128, color="grey", ls=":")
-ax.set_xlabel("M (tokens)"); ax.set_ylabel("utilization"); ax.set_title("K=64, N=192, OS"); ax.legend();
+    u197 = systolic.gemm(197, 64, 192, size, size)["utilization"]
+    ax.plot(Ms, [systolic.gemm(int(M), 64, 192, size, size)["utilization"] for M in Ms],
+            label=f"{size}x{size} (at M=197: {u197:.2f})")
+    ax.plot(197, u197, "ko", ms=4)
+ax.axvline(197, color="grey", ls=":")
+ax.text(198, 0.03, "197 tokens", color="grey", fontsize=8)
+ax.set_xlabel("M (tokens)"); ax.set_ylabel("utilization"); ax.set_ylim(0, 1)
+ax.set_title("K=64, N=192, output-stationary"); ax.legend(fontsize=8);
 #%% md
 Two effects show up: the sawtooth (a partly filled last tile) and the
 fill/drain overhead (K is short compared with rows + cols). Which one hurts
@@ -128,16 +133,19 @@ check("lab2.ws_gemm", ws_gemm_cycles)
 Compare the two dataflows on every GEMM of a ViT-Tiny block.
 #%% code
 block = [op for op in workloads.vit_block() if op.is_gemm]
-fig, axes = plt.subplots(1, 2, figsize=(10, 3), sharey=True)
+fig, axes = plt.subplots(1, 2, figsize=(11, 3.8), sharey=True)
 for ax, size in zip(axes, (4, 16)):
     names = [op.name for op in block]
     os_u = [systolic.gemm(*op.shape, size, size, "os")["utilization"] for op in block]
     ws_u = [op.macs / op.count / (ws_gemm_cycles(*op.shape, size, size) * size * size) for op in block]
     x = np.arange(len(block))
-    ax.bar(x - 0.2, os_u, 0.4, label="output-stationary")
-    ax.bar(x + 0.2, ws_u, 0.4, label="weight-stationary")
-    ax.set_xticks(x, names); ax.set_title(f"{size}x{size} array"); ax.set_ylim(0, 1)
-axes[0].set_ylabel("utilization"); axes[0].legend(loc="lower left")
+    b1 = ax.bar(x - 0.2, os_u, 0.4, label="output-stationary")
+    b2 = ax.bar(x + 0.2, ws_u, 0.4, label="weight-stationary")
+    for b in (b1, b2):
+        ax.bar_label(b, fmt="%.2f", padding=2, fontsize=7)
+    ax.set_xticks(x, names); ax.set_title(f"{size}x{size} array"); ax.set_ylim(0, 1.15)
+    ax.set_xlabel("GEMM of the block"); ax.set_ylabel("utilization")
+axes[0].legend(loc="lower left", fontsize=8)
 fig.tight_layout()
 #%% md
 ## Stretch

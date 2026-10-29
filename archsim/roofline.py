@@ -46,25 +46,35 @@ def plot(machine: Machine, points=(), ax=None, imin: float = 0.5, imax: float = 
     """Draw the roofline and optional points.
 
     ``points`` is an iterable of (label, intensity) or (label, intensity, perf).
-    Without a measured perf the point is drawn on the roof.
+    Without a measured perf the point is drawn on the roof. Each point gets
+    its own marker and a legend entry with its numbers, so labels never
+    overlap even when points sit next to each other.
     """
     import matplotlib.pyplot as plt
 
     if ax is None:
-        _, ax = plt.subplots(figsize=(6.5, 4))
+        _, ax = plt.subplots(figsize=(9, 4.5))
     x = np.logspace(np.log10(imin), np.log10(imax), 200)
-    ax.loglog(x, machine.attainable(x) / 1e9, color="black", lw=2, label=machine.name)
+    ax.loglog(x, machine.attainable(x) / 1e9, color="black", lw=2)
+    peak = machine.peak_ops / 1e9
+    ax.text(imax, peak * 1.12, f"peak {peak:g} GOP/s", ha="right", va="bottom", fontsize=9)
+    i_txt = imin * 2
+    ax.text(i_txt, machine.bandwidth * i_txt / 1e9 * 1.25,
+            f"DRAM {machine.bandwidth / 1e9:g} GB/s", rotation=0, fontsize=9, va="bottom")
     ax.axvline(machine.ridge, color="grey", ls=":", lw=1)
-    ax.text(machine.ridge * 1.08, machine.peak_ops / 1e9 * 0.04,
-            f"ridge {machine.ridge:.0f} op/B", color="grey", rotation=90, va="bottom")
-    for p in points:
+    ax.text(machine.ridge * 1.08, peak * 0.012, f"ridge\n{machine.ridge:.0f} op/B",
+            color="grey", fontsize=8, va="bottom")
+    markers = "osD^v<>pPhX*"
+    for i, p in enumerate(points):
         label, inten = p[0], p[1]
         perf = p[2] if len(p) > 2 else float(machine.attainable(inten))
-        ax.plot(inten, perf / 1e9, "o")
-        ax.annotate(label, (inten, perf / 1e9), textcoords="offset points",
-                    xytext=(4, -10), fontsize=8)
+        ax.plot(inten, perf / 1e9, markers[i % len(markers)], ms=8, alpha=0.85,
+                label=f"{label}: {inten:.1f} op/B, {perf / 1e9:.1f} GOP/s ({machine.bound(inten)})")
     ax.set_xlabel("arithmetic intensity (ops / DRAM byte)")
     ax.set_ylabel("attainable performance (GOP/s)")
+    ax.set_ylim(top=peak * 3)
+    ax.set_title(machine.name, fontsize=10)
     ax.grid(True, which="both", alpha=0.3)
-    ax.legend(loc="lower right", fontsize=8)
+    if points:
+        ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1), fontsize=8, frameon=False)
     return ax

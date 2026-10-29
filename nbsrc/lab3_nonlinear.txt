@@ -113,14 +113,15 @@ methods = {
 }
 scores = np.random.default_rng(0).normal(scale=3.0, size=(197, 197))   # one head
 ref = nl.softmax(scores)
-fig, ax = plt.subplots(figsize=(6, 3.5))
+fig, ax = plt.subplots(figsize=(7, 4))
 for name, (fn, pj) in methods.items():
     err = np.abs(softmax_approx(scores, fn) - ref).max()
     print(f"{name:<8} {pj:6.2f} pJ/elem   max |error| {err:.1e}")
     if name != "float":   # the reference has zero error by definition
         ax.loglog(pj, err, "o")
-        ax.annotate(name, (pj, err), xytext=(6, -3), textcoords="offset points")
-ax.set_xlim(0.5, 5)
+        ax.annotate(f"{name}: {pj:.2f} pJ, error {err:.1e}", (pj, err), xytext=(7, -3),
+                    textcoords="offset points", fontsize=8)
+ax.set_xlim(0.6, 12)
 ax.set_xlabel("exp cost (pJ / element)"); ax.set_ylabel("max |softmax error|")
 ax.set_title(f"float reference: {methods['float'][1]:.1f} pJ / element");
 #%% md
@@ -151,13 +152,16 @@ def gelu_lut(x):
 
 x = np.linspace(-6, 6, 1201)
 exact = nl.gelu(x)
-fig, axes = plt.subplots(1, 2, figsize=(10, 3))
+fig, axes = plt.subplots(1, 2, figsize=(11, 3.8))
 axes[0].plot(x, exact, "k", label="exact (erf)")
 for name, fn in {"LUT-32": gelu_lut, "I-BERT": nl.gelu_ibert, "x·sigmoid(1.702x)": nl.gelu_sigmoid}.items():
     y = fn(x)
     axes[0].plot(x, y, "--", label=name)
     axes[1].plot(x, y - exact, label=f"{name}: max {np.abs(y - exact).max():.3f}")
-axes[0].legend(); axes[1].legend(); axes[1].set_title("error")
+axes[0].set_xlabel("x"); axes[0].set_ylabel("GELU(x)"); axes[0].set_title("GELU and its approximations")
+axes[1].set_xlabel("x"); axes[1].set_ylabel("approximation - exact")
+axes[1].set_title("error (legend: max |error|)")
+axes[0].legend(fontsize=8); axes[1].legend(fontsize=8)
 fig.tight_layout()
 #%% md
 ## Stretch
@@ -179,6 +183,8 @@ fig, axes = plt.subplots(1, 2, figsize=(9, 4.5))
 for ax, pipelined in zip(axes, (False, True)):
     mp = cgra.map_dfg(dfg, pipelined=pipelined)
     cgra.draw(mp, dfg, ax)
+    ax.set_title(f"{'pipelined' if pipelined else 'latency-first'}: {mp.cycles} cycles, "
+                 f"{mp.hops} hops, {mp.energy_pj / 3:.2f} pJ/element", fontsize=10)
     print(f"CGRA, {'pipelined' if pipelined else 'latency-first'}: {mp.energy_pj / 3:.2f} pJ/element, "
           f"{3 * mp.graphs_per_cycle:.1f} elements/cycle, utilization {mp.utilization:.2f}")
 print(f"fixed function: {ff['energy_pj']:.2f} pJ/element, 1 element/cycle, {ff['area_um2']:.0f} um^2 "
