@@ -12,7 +12,7 @@ cd "$root"
 [ "$(git rev-parse --abbrev-ref HEAD)" = master ] || { echo "run this on master"; exit 1; }
 git diff --quiet && git diff --cached --quiet || { echo "commit your changes first"; exit 1; }
 
-INSTRUCTOR_ONLY='^(nbsrc/|scripts/build_notebooks\.py|scripts/make_expected\.py|scripts/sync_students\.sh|scripts/check_all\.sh|labs/)'
+INSTRUCTOR_ONLY='^(nbsrc/|scripts/build_notebooks\.py|scripts/make_expected\.py|scripts/sync_students\.sh|scripts/check_all\.sh|submissions/|labs/)'
 
 tmp=$(mktemp -d)
 trap 'git worktree remove --force "$tmp" 2>/dev/null || true; rm -rf "$tmp"' EXIT

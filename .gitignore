@@ -12,8 +12,9 @@ uv.lock
 # Jupyter
 .ipynb_checkpoints/
 .jupyterlite.doit.db
-submission.json
-submissions/
+/labs/submission.json
+class_pareto.png
+submissions/*.png
 
 # Site builds
 site/

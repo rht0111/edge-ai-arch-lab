@@ -5,6 +5,8 @@
 # Executed notebooks and plots go to _check/ (ignored by git).
 set -uo pipefail
 cd "$(git rev-parse --show-toplevel)"
+# store notebooks without outputs (see scripts/nbclean.py); harmless if already set
+git config filter.nbclean.clean >/dev/null || git config filter.nbclean.clean "python3 scripts/nbclean.py"
 out=_check
 rm -rf "$out"; mkdir -p "$out/executed" "$out/submissions"
 fail=0
