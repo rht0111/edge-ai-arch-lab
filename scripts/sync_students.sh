@@ -44,28 +44,31 @@ for nb in "$tmp"/labs/*.ipynb; do
 done
 
 python3 - "$tmp" "$repo" "$branch" <<'PY'
+import re
 import sys
 from pathlib import Path
 
 tree, repo, branch = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
 owner, name = repo.split("/")
-here = "rht0111/edge-ai-arch-lab"
+# "(?![-\w])" stops a rule from matching a name it has already rewritten,
+# such as edge-ai-arch-lab inside edge-ai-arch-lab-students.
+end = r"(?![-\w])"
 rules = [
-    (f"github.com/{here}/blob/students/", f"github.com/{repo}/blob/{branch}/"),
-    (f"archsim @ git+https://github.com/{here}", f"archsim @ git+https://github.com/{repo}@{branch}"),
-    ("rht0111.github.io/edge-ai-arch-lab", f"{owner}.github.io/{name}"),
-    (f"github.com/{here}", f"github.com/{repo}"),
-    (f"repo_name: {here}", f"repo_name: {repo}"),
-    ("cd edge-ai-arch-lab", f"cd {name}"),
-    ("`edge-ai-arch-lab` folder", f"`{name}` folder"),
+    (r"rht0111/edge-ai-arch-lab/blob/students/", f"{repo}/blob/{branch}/"),
+    (r"archsim @ git\+https://github\.com/rht0111/edge-ai-arch-lab" + r"(?![-\w@])",
+     f"archsim @ git+https://github.com/{repo}@{branch}"),
+    (r"rht0111\.github\.io/edge-ai-arch-lab" + end, f"{owner}.github.io/{name}"),
+    (r"rht0111/edge-ai-arch-lab" + end, repo),
+    (r"cd edge-ai-arch-lab" + end, f"cd {name}"),
+    (r"`edge-ai-arch-lab` folder", f"`{name}` folder"),
 ]
 for f in tree.rglob("*"):
     if not f.is_file() or ".git" in f.parts or f.name.startswith("LICENSE") or f.suffix == ".png":
         continue
     text = f.read_text()
     new = text
-    for old, rep in rules:
-        new = new.replace(old, rep)
+    for pattern, replacement in rules:
+        new = re.sub(pattern, lambda m: replacement, new)
     if new != text:
         f.write_text(new)
 PY
