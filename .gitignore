@@ -26,5 +26,5 @@ lite/pypi/
 .idea/
 .DS_Store
 
-# Local check output (scripts/check_all.sh)
+# Local check output
 _check/
