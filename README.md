@@ -38,14 +38,19 @@ before closing the tab if you want to keep them.
 
 **B. Google Colab.** Each notebook has an *Open in Colab* badge.
 
-**C. Locally** (Python 3.10 or newer):
+**C. Locally** (Python 3.10 or newer), in a fresh environment:
 
 ```bash
 git clone https://github.com/rht0111/edge-ai-arch-lab.git
 cd edge-ai-arch-lab
-pip install -e ".[lab]"      # or: uv sync --extra lab
+conda create -n edgeai python=3.12 -y && conda activate edgeai   # or: python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[lab,dev]"
 jupyter lab labs/
 ```
+
+New to notebooks, or something fails? The
+[setup page](https://rht0111.github.io/edge-ai-arch-lab/setup/) walks through
+all three ways step by step and lists the common errors.
 
 Check your answers from a terminal with `pytest tests/test_lab1.py`
 (after `pip install -e ".[dev]"`). A lab's checks report "not implemented
