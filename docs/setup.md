@@ -215,6 +215,23 @@ rm -rf .venv
 # then Step 2, Option 1 or Option 2, and Step 3
 ```
 
+**pip prints `ERROR: pip's dependency resolver does not currently take into
+account ...` followed by `torch ... requires ...`** (or another package you
+never asked for). This is a warning about software already on your computer,
+not about the course; the install has finished. It means the environment can
+see packages installed elsewhere, usually with `pip install --user` into your
+home folder. Make the course environment ignore them, then install again:
+
+```bash
+conda env config vars set PYTHONNOUSERSITE=1 -n edgeai   # conda (Option 1)
+conda deactivate && conda activate edgeai
+pip install -e ".[lab,dev]"
+```
+
+With a venv (Option 2), recreate it with `python3 -m venv --clear .venv` and
+run `export PYTHONNOUSERSITE=1` before activating it. Either way, if
+`pytest tests/unit -q` ends with `47 passed`, everything the course needs works.
+
 **`jupyter: command not found` or `Command 'jupiter' not found`.** The command
 is `jupyter` (with a y), and it exists only while the environment is active:
 check that your prompt starts with `(edgeai)` or `(.venv)`.
